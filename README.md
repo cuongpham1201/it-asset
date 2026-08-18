@@ -119,6 +119,7 @@ VITE_DEMO_MODE=true
 AssetFlow miễn phí và có thể self-host. Nếu dự án hữu ích, bạn có thể hỗ trợ chi phí duy trì và phát triển.
 
 ### Donate qua Vietcombank
+<img width="373" height="450" alt="image" src="https://github.com/user-attachments/assets/a8ce277b-f365-4599-9961-34cc7d4531ec" />
 
 - Chủ tài khoản: **NGUYEN DUC LAM**
 - Số tài khoản: **059000212664**
