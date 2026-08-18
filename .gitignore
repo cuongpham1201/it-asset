@@ -1,0 +1,15 @@
+node_modules/
+dist/
+frontend/dist/
+backend/dist/
+*.tsbuildinfo
+.env
+.env.local
+.env.*.local
+*.log
+!.env.example
+coverage/
+uploads/
+deploy/secrets/
+*.pem
+*.key

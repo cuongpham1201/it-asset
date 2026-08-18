@@ -1,0 +1,13 @@
+{
+  "name": "assetflow",
+  "private": true,
+  "version": "0.1.0",
+  "workspaces": ["frontend", "backend"],
+  "scripts": {
+    "dev": "npm run dev --workspace @assetflow/frontend",
+    "build": "npm run build --workspaces --if-present",
+    "build:frontend": "npm run build --workspace @assetflow/frontend",
+    "build:backend": "npm run build --workspace @assetflow/backend",
+    "preview": "npm run preview --workspace @assetflow/frontend"
+  }
+}

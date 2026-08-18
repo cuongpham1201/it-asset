@@ -1,0 +1,70 @@
+name: assetflow
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-assetflow}
+      POSTGRES_USER: ${POSTGRES_USER:-assetflow}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+    volumes: ["assetflow_pgdata:/var/lib/postgresql/data"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 15
+    labels:
+      com.centurylinklabs.watchtower.enable: "false"
+    networks: [backend]
+
+  backend:
+    image: ${ASSETFLOW_REGISTRY:-ghcr.io/yourname}/assetflow-backend:${ASSETFLOW_VERSION:-latest}
+    pull_policy: always
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      APP_VERSION: ${ASSETFLOW_VERSION:-latest}
+      CORS_ORIGIN: ${APP_URL:-http://localhost:8080}
+      DATABASE_HOST: postgres
+      DATABASE_PORT: 5432
+      DATABASE_NAME: ${POSTGRES_DB:-assetflow}
+      DATABASE_USER: ${POSTGRES_USER:-assetflow}
+      DATABASE_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    labels:
+      com.centurylinklabs.watchtower.enable: "true"
+    networks: [backend]
+
+  frontend:
+    image: ${ASSETFLOW_REGISTRY:-ghcr.io/yourname}/assetflow-frontend:${ASSETFLOW_VERSION:-latest}
+    pull_policy: always
+    restart: unless-stopped
+    ports:
+      - "${APP_PORT:-8080}:8080"
+    depends_on:
+      backend:
+        condition: service_healthy
+    labels:
+      com.centurylinklabs.watchtower.enable: "true"
+    networks: [frontend, backend]
+
+  watchtower:
+    image: containrrr/watchtower:1.7.1
+    profiles: ["auto-update"]
+    restart: unless-stopped
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    command: --label-enable --cleanup --interval ${WATCHTOWER_INTERVAL:-3600}
+    networks: [frontend]
+
+networks:
+  frontend:
+  backend:
+    internal: true
+
+volumes:
+  assetflow_pgdata:
