@@ -10,9 +10,17 @@ FROM dependencies AS build
 COPY apps/api/prisma ./apps/api/prisma
 COPY apps/api/tsconfig.json apps/api/nest-cli.json ./apps/api/
 COPY apps/api/src ./apps/api/src
-RUN npm run prisma:generate --workspace @assetflow/api
 RUN npm run build --workspace @assetflow/api
-RUN npm prune --omit=dev
+
+FROM node:22-alpine AS production-dependencies
+WORKDIR /app
+COPY package.json package-lock.json ./
+COPY apps/web/package.json ./apps/web/package.json
+COPY apps/api/package.json ./apps/api/package.json
+COPY apps/api/prisma ./apps/api/prisma
+RUN --mount=type=cache,target=/root/.npm npm ci --omit=dev --workspace @assetflow/api \
+    && npm run prisma:generate --workspace @assetflow/api \
+    && npm cache clean --force
 
 FROM node:22-alpine AS runtime
 ENV NODE_ENV=production \
@@ -22,8 +30,10 @@ RUN apk add --no-cache tini \
     && addgroup -S assetflow \
     && adduser -S -G assetflow assetflow \
     && mkdir -p /var/lib/assetflow/documents \
-    && chown -R assetflow:assetflow /var/lib/assetflow
-COPY --from=build --chown=assetflow:assetflow /app/node_modules ./node_modules
+    && chown -R assetflow:assetflow /var/lib/assetflow \
+    && rm -rf /usr/local/lib/node_modules/npm \
+    && rm -f /usr/local/bin/npm /usr/local/bin/npx
+COPY --from=production-dependencies --chown=assetflow:assetflow /app/node_modules ./node_modules
 COPY --from=build --chown=assetflow:assetflow /app/apps/api/dist ./apps/api/dist
 COPY --from=build --chown=assetflow:assetflow /app/apps/api/prisma ./apps/api/prisma
 COPY --from=build --chown=assetflow:assetflow /app/apps/api/package.json ./apps/api/package.json
