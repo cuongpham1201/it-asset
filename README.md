@@ -127,9 +127,7 @@ Production phải dùng tag release cụ thể, backup và thử restore trướ
 
 ## ❤️ Support AssetFlow
 
-AssetFlow miễn phí và có thể self-host. Nếu dự án hữu ích, bạn có thể hỗ trợ chi phí duy trì và phát triển.
-
-### Donate qua Vietcombank
+AssetFlow miễn phí và có thể self-host. Nếu dự án hữu ích, bạn có thể hỗ trợ chi phí duy trì và phát triển thêm tính năng.
 <img width="235" height="294" alt="image" src="https://github.com/user-attachments/assets/1187b400-08ba-4fb7-8194-dec25d63410a" />
 
 - Chủ tài khoản: **NGUYEN DUC LAM**
