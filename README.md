@@ -5,6 +5,7 @@
 [![Release](https://img.shields.io/github/v/release/duclamtk39/assetIT?sort=semver)](https://github.com/duclamtk39/assetIT/releases)
 
 AssetFlow là phần mềm mã nguồn mở, self-host dùng để quản lý vòng đời tài sản: nhập kho, cấp phát, cho mượn, thu hồi, điều chuyển, bảo trì và kiểm kê.
+<img width="1918" height="896" alt="image" src="https://github.com/user-attachments/assets/3c08f739-0f92-41ba-93b2-f5fdcfcedd4d" />
 
 > AssetFlow hiện ở giai đoạn trước v1.0. Backend đã có local auth, scope phòng ban, audit và transaction lifecycle lõi; một số màn hình frontend vẫn đang chuyển từ prototype/local state sang API. Chỉ dùng bản hiện tại để staging/đánh giá, chưa dùng dữ liệu nhạy cảm trên Internet.
 
