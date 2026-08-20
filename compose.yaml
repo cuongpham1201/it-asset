@@ -25,13 +25,13 @@ services:
     logging: *default-logging
 
   api:
-    image: ${ASSETFLOW_REGISTRY:-ghcr.io/duclamtk39}/assetflow-backend:${ASSETFLOW_VERSION:-latest}
+    image: ${ASSETFLOW_REGISTRY:-ghcr.io/duclamtk39}/assetflow-backend:${ASSETFLOW_VERSION:-edge}
     pull_policy: always
     restart: unless-stopped
     environment:
       NODE_ENV: production
       PORT: 3000
-      APP_VERSION: ${ASSETFLOW_VERSION:-latest}
+      APP_VERSION: ${ASSETFLOW_VERSION:-edge}
       CORS_ORIGIN: ${APP_URL:-http://localhost:8080}
       COOKIE_SECURE: "false"
       SESSION_TTL_HOURS: ${SESSION_TTL_HOURS:-12}
@@ -56,7 +56,7 @@ services:
     logging: *default-logging
 
   web:
-    image: ${ASSETFLOW_REGISTRY:-ghcr.io/duclamtk39}/assetflow-frontend:${ASSETFLOW_VERSION:-latest}
+    image: ${ASSETFLOW_REGISTRY:-ghcr.io/duclamtk39}/assetflow-frontend:${ASSETFLOW_VERSION:-edge}
     pull_policy: always
     restart: unless-stopped
     ports:
