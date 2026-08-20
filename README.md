@@ -130,10 +130,9 @@ Production phải dùng tag release cụ thể, backup và thử restore trướ
 AssetFlow miễn phí và có thể self-host. Nếu dự án hữu ích, bạn có thể hỗ trợ chi phí duy trì và phát triển.
 
 ### Donate qua Vietcombank
-
-<img width="373" height="450" alt="AssetFlow donate QR" src="https://github.com/user-attachments/assets/a8ce277b-f365-4599-9961-34cc7d4531ec" />
+<img width="235" height="294" alt="image" src="https://github.com/user-attachments/assets/1187b400-08ba-4fb7-8194-dec25d63410a" />
 
 - Chủ tài khoản: **NGUYEN DUC LAM**
 - Số tài khoản: **059000212664**
 
-Vui lòng kiểm tra đúng tên người nhận trước khi chuyển khoản. Thank you for supporting AssetFlow ❤️
+Xin cảm ơn !!!!
