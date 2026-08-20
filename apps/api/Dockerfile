@@ -18,7 +18,7 @@ COPY package.json package-lock.json ./
 COPY apps/web/package.json ./apps/web/package.json
 COPY apps/api/package.json ./apps/api/package.json
 COPY apps/api/prisma ./apps/api/prisma
-RUN --mount=type=cache,target=/root/.npm npm ci --omit=dev --workspace @assetflow/api \
+RUN --mount=type=cache,target=/root/.npm npm ci --omit=dev --omit=optional --workspace @assetflow/api \
     && npm run prisma:generate --workspace @assetflow/api \
     && npm cache clean --force
 
