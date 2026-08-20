@@ -1,3 +1,3 @@
 $ErrorActionPreference = 'Stop'
-npm.cmd run build
+npm.cmd run verify
 Write-Host 'AssetFlow verification passed.' -ForegroundColor Green

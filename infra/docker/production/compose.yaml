@@ -1,0 +1,113 @@
+name: assetflow
+
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "5"
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
+    secrets:
+      - postgres_password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks: [data]
+    security_opt: ["no-new-privileges:true"]
+    logging: *default-logging
+
+  api:
+    image: ${REGISTRY_PREFIX:-ghcr.io/yourname}/assetflow-backend:${ASSETFLOW_VERSION}
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: "8080"
+      TZ: ${TZ:-Asia/Ho_Chi_Minh}
+      APP_URL: ${APP_URL}
+      CORS_ORIGIN: ${APP_URL}
+      COOKIE_SECURE: "true"
+      SESSION_TTL_HOURS: ${SESSION_TTL_HOURS:-12}
+      DATABASE_HOST: db
+      DATABASE_PORT: "5432"
+      DATABASE_NAME: ${POSTGRES_DB}
+      DATABASE_USER: ${POSTGRES_USER}
+      DATABASE_PASSWORD_FILE: /run/secrets/postgres_password
+      DATA_ENCRYPTION_KEY_FILE: /run/secrets/data_encryption_key
+      ALLOW_INSECURE_LDAP: "false"
+      STORAGE_PATH: /var/lib/assetflow/documents
+      TRUSTED_PROXY_CIDRS: ${TRUSTED_PROXY_CIDRS:-172.16.0.0/12}
+    secrets:
+      - postgres_password
+      - data_encryption_key
+    volumes:
+      - document_data:/var/lib/assetflow/documents
+    depends_on:
+      db:
+        condition: service_healthy
+    expose: ["8080"]
+    networks: [edge, data]
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: ["ALL"]
+    read_only: true
+    tmpfs: ["/tmp:size=64m,noexec,nosuid"]
+    logging: *default-logging
+
+  web:
+    image: ${REGISTRY_PREFIX:-ghcr.io/yourname}/assetflow-frontend:${ASSETFLOW_VERSION}
+    restart: unless-stopped
+    expose: ["8080"]
+    depends_on:
+      api:
+        condition: service_healthy
+    networks: [edge]
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: ["ALL"]
+    read_only: true
+    tmpfs: ["/tmp:size=16m,noexec,nosuid"]
+    logging: *default-logging
+
+  proxy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    environment:
+      APP_DOMAIN: ${APP_DOMAIN}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on: [api, web]
+    networks: [edge]
+    security_opt: ["no-new-privileges:true"]
+    logging: *default-logging
+
+networks:
+  edge:
+  data:
+    internal: true
+
+volumes:
+  postgres_data:
+  document_data:
+  caddy_data:
+  caddy_config:
+
+secrets:
+  postgres_password:
+    file: ./secrets/postgres_password.txt
+  data_encryption_key:
+    file: ./secrets/data_encryption_key.txt

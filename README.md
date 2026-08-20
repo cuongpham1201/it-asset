@@ -4,56 +4,105 @@
 [![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?logo=docker&logoColor=white)](https://github.com/duclamtk39/assetIT/pkgs)
 [![Release](https://img.shields.io/github/v/release/duclamtk39/assetIT?sort=semver)](https://github.com/duclamtk39/assetIT/releases)
 
-AssetFlow là phần mềm mã nguồn mở dùng để quản lý vòng đời tài sản: nhập kho, cấp phát, cho mượn, thu hồi, điều chuyển, bảo trì, kiểm kê và theo dõi lịch sử.
+AssetFlow là phần mềm mã nguồn mở, self-host dùng để quản lý vòng đời tài sản: nhập kho, cấp phát, cho mượn, thu hồi, điều chuyển, bảo trì và kiểm kê.
 
-> **Lưu ý:** AssetFlow hiện đang ở giai đoạn trước v1.0. Chưa nên sử dụng dữ liệu nhạy cảm trên Internet cho đến khi hoàn thành xác thực phía server, RBAC, audit log và security review.
+> AssetFlow hiện ở giai đoạn trước v1.0. Backend đã có local auth, scope phòng ban, audit và transaction lifecycle lõi; một số màn hình frontend vẫn đang chuyển từ prototype/local state sang API. Chỉ dùng bản hiện tại để staging/đánh giá, chưa dùng dữ liệu nhạy cảm trên Internet.
 
-## Cài nhanh bằng Docker Compose
+## Cài nhanh bằng Docker
 
-Yêu cầu: Docker Engine hoặc Docker Desktop, kèm Docker Compose v2.
-
-### Linux / Ubuntu
+Yêu cầu: Docker Engine hoặc Docker Desktop và Docker Compose v2.
 
 ```bash
 git clone https://github.com/duclamtk39/assetIT.git
 cd assetIT
 cp .env.example .env
-nano .env
+# đặt POSTGRES_PASSWORD mạnh và ghim ASSETFLOW_VERSION
 docker compose pull
 docker compose up -d
 ```
 
-### Windows PowerShell
+Nếu muốn build và thử trực tiếp từ source vừa clone, không cần chờ image trên GHCR:
 
-```powershell
-git clone https://github.com/duclamtk39/assetIT.git
-Set-Location assetIT
-Copy-Item .env.example .env
-notepad .env
-docker compose pull
-docker compose up -d
+```bash
+docker compose -f compose.yaml -f compose.dev.yaml up -d --build
 ```
 
-Trong `.env`, hãy đặt mật khẩu database riêng:
+Sau khi workflow trên nhánh `main` publish image, có thể đặt `ASSETFLOW_VERSION=edge` trong `.env` để thử bản mới nhất. Khi dùng thật, nên chuyển sang tag release cố định.
 
-```env
-ASSETFLOW_REGISTRY=ghcr.io/duclamtk39
-ASSETFLOW_VERSION=latest
-APP_URL=http://localhost:8080
-APP_PORT=8080
-POSTGRES_DB=assetflow
-POSTGRES_USER=assetflow
-POSTGRES_PASSWORD=thay-bang-mat-khau-manh
-```
-
-Truy cập: [http://localhost:8080](http://localhost:8080)
-
-Kiểm tra container:
+Windows PowerShell dùng `Copy-Item .env.example .env` thay cho lệnh `cp`. Mở `http://localhost:8080` và kiểm tra bằng:
 
 ```bash
 docker compose ps
 docker compose logs --tail=100
 ```
+
+Đăng nhập lần đầu:
+
+```text
+Tài khoản: admin
+Mật khẩu:  admin123
+```
+
+AssetFlow tự tạo tài khoản này trong PostgreSQL khi cơ sở dữ liệu chưa có người dùng `admin`; không cần chạy lệnh seed hay cấu hình thủ công. Hệ thống bắt buộc đặt mật khẩu mới ngay lần đăng nhập đầu tiên và không tự tạo lại/đặt lại mật khẩu ở các lần khởi động sau.
+
+Dữ liệu PostgreSQL nằm trong volume `assetflow_pgdata`; chứng từ nằm trong `assetflow_documents`. Không chạy `docker compose down -v` nếu muốn giữ dữ liệu. API tự chạy Prisma migration trước khi nhận request; migration lỗi thì API không khởi động.
+
+## Backup và restore
+
+Tạo backup đầy đủ database và chứng từ:
+
+```bash
+bash scripts/backup.sh
+```
+
+Windows PowerShell:
+
+```powershell
+.\scripts\backup.ps1
+```
+
+Restore yêu cầu xác nhận vì sẽ thay thế dữ liệu hiện tại:
+
+```bash
+bash scripts/restore.sh backups/assetflow-YYYYMMDDTHHMMSSZ
+```
+
+```powershell
+.\scripts\restore.ps1 -BackupPath .\backups\assetflow-YYYYMMDDTHHMMSSZ
+```
+
+Quy trình, lịch backup và kiểm tra sau restore nằm trong [hướng dẫn backup/restore](docs/BACKUP_RESTORE.md).
+
+## Đồng bộ người dùng
+
+Microsoft 365/Entra ID và LDAP/Active Directory được kết nối qua backend. Trước khi lưu secret, tạo `DIRECTORY_ENCRYPTION_KEY` theo [hướng dẫn đồng bộ danh tính](docs/DIRECTORY_SYNC.md). Tính năng đồng bộ hồ sơ, phòng ban, trạng thái và vai trò; chưa cung cấp SSO.
+
+## Cấu trúc repository
+
+```text
+apps/
+  web/                 React + TypeScript + Vite
+  api/                 NestJS + Prisma REST API
+database/
+  reference/           SQL tham khảo, không tự chạy production
+infra/docker/production/ HTTPS, secrets và cấu hình self-host production
+docs/                  Kiến trúc, bảo mật, nghiệp vụ và release
+scripts/               Công cụ vận hành dùng chung
+.github/               CI/CD, Dependabot và mẫu cộng tác
+compose.yaml           Cài nhanh self-host
+compose.dev.yaml       Build image tại máy phát triển
+```
+
+Migration vận hành chỉ lấy từ `apps/api/prisma/migrations`. Web không kết nối trực tiếp database; PostgreSQL chỉ nằm trong private Docker network.
+
+## Phát triển
+
+```bash
+npm ci
+npm run dev
+```
+
+Các lệnh chính: `npm run dev:web`, `npm run dev:api`, `npm run build`, `npm run verify`. Chỉ bật dữ liệu mẫu ở local bằng `VITE_DEMO_MODE=true`.
 
 ## Cập nhật
 
@@ -63,67 +112,28 @@ docker compose pull
 docker compose up -d
 ```
 
-Dữ liệu PostgreSQL nằm trong volume `assetflow_pgdata`. Không chạy `docker compose down -v` nếu muốn giữ dữ liệu.
-
-Production nên ghim `ASSETFLOW_VERSION` vào một release cụ thể, ví dụ `1.0.0`, và backup database trước khi nâng cấp.
-
-## Public Internet và HTTPS
-
-Cấu hình mặc định chạy HTTP trên cổng `8080`, phù hợp LAN, demo hoặc hệ thống đã có reverse proxy.
-
-Khi public Internet, dùng cấu hình Caddy, HTTPS và Docker secrets trong [deploy/README.md](deploy/README.md):
-
-```bash
-cd deploy
-cp .env.example .env
-# tạo secrets theo deploy/README.md
-docker compose --env-file .env -f compose.production.yml pull
-docker compose --env-file .env -f compose.production.yml up -d
-```
-
-## Chức năng chính
-
-- Sổ tài sản, nhóm tài sản, ảnh và cấu hình kỹ thuật.
-- Nhập kho, cấp phát, cho mượn, thu hồi và điều chuyển.
-- Barcode/QR, import/export Excel và biên bản bàn giao A4.
-- Quản lý phòng ban, site, vị trí, kho và nhà cung cấp.
-- Phân quyền Admin, IT, HCNS theo phạm vi dữ liệu.
-- Đồng bộ người dùng Microsoft 365/Entra ID hoặc LDAP.
-- Đa ngôn ngữ và tùy chỉnh thương hiệu công ty.
-
-## Chạy từ source
-
-```bash
-npm ci
-npm run dev
-```
-
-Giao diện mặc định: [http://localhost:5173](http://localhost:5173)
-
-Chỉ bật dữ liệu mẫu trong môi trường local:
-
-```env
-VITE_DEMO_MODE=true
-```
+Production phải dùng tag release cụ thể, backup và thử restore trước khi nâng cấp. Triển khai domain/HTTPS và Docker secrets xem [hướng dẫn production](infra/docker/production/README.md).
 
 ## Tài liệu
 
-- [Triển khai HTTPS](deploy/README.md)
-- [Release và Docker images](docs/RELEASE.md)
-- [Kiến trúc hệ thống](docs/ARCHITECTURE.md)
+- [Cấu trúc repository](docs/REPOSITORY_STRUCTURE.md)
+- [Kiến trúc](docs/ARCHITECTURE.md)
 - [Bảo mật và luồng dữ liệu](docs/SECURITY_AND_DATA_FLOW.md)
-- [Roadmap](docs/ROADMAP.md)
+- [Backup và restore](docs/BACKUP_RESTORE.md)
+- [Microsoft 365 và LDAP](docs/DIRECTORY_SYNC.md)
+- [Quy trình release](docs/RELEASE.md)
+- [Đóng góp](CONTRIBUTING.md) · [Báo cáo bảo mật](SECURITY.md)
+- [Giấy phép MIT](LICENSE)
 
 ## ❤️ Support AssetFlow
 
 AssetFlow miễn phí và có thể self-host. Nếu dự án hữu ích, bạn có thể hỗ trợ chi phí duy trì và phát triển.
 
 ### Donate qua Vietcombank
-<img width="373" height="450" alt="image" src="https://github.com/user-attachments/assets/a8ce277b-f365-4599-9961-34cc7d4531ec" />
+
+<img width="373" height="450" alt="AssetFlow donate QR" src="https://github.com/user-attachments/assets/a8ce277b-f365-4599-9961-34cc7d4531ec" />
 
 - Chủ tài khoản: **NGUYEN DUC LAM**
 - Số tài khoản: **059000212664**
 
-Vui lòng kiểm tra đúng tên người nhận trước khi chuyển khoản.
-
-Thank you for supporting AssetFlow ❤️
+Vui lòng kiểm tra đúng tên người nhận trước khi chuyển khoản. Thank you for supporting AssetFlow ❤️

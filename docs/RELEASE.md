@@ -3,7 +3,7 @@
 ## Luồng nhánh
 
 ```text
-develop / pull request -> CI build + security checks, không publish
+develop / pull request -> CI build + tests + security checks, không publish
 main                   -> image edge để kiểm thử tích hợp
 GitHub Release vX.Y.Z  -> image SemVer + latest cho người dùng
 ```
@@ -51,7 +51,7 @@ Sau khi backup:
 docker compose pull
 docker compose up -d
 docker compose ps
-docker compose logs backend --tail=100
+docker compose logs api --tail=100
 ```
 
 Không chạy `docker compose down -v` khi nâng cấp vì `-v` xóa volume PostgreSQL. Không tự đổi major version PostgreSQL qua Watchtower.
@@ -68,4 +68,4 @@ Không chạy `docker compose down -v` khi nâng cấp vì `-v` xóa volume Post
 - `latest`: dành cho người muốn theo stable mới nhất.
 - SemVer cố định: khuyến nghị cho doanh nghiệp.
 - `edge`: chỉ staging/developer.
-- Watchtower: opt-in bằng profile `auto-update`, chỉ update frontend/backend có label; không update PostgreSQL.
+- Không mount Docker socket cho auto-updater. Instance production cập nhật có kiểm soát bằng tag SemVer sau khi backup và restore-test.

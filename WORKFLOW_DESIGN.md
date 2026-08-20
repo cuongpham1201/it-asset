@@ -117,13 +117,20 @@ PENDING_RECEIPT ──RECEIVE──► READY
 - Tình trạng bàn giao và ngày dự kiến trả.
 - In Code 128; quét camera, máy quét USB hoặc nhập mã.
 
-### Cần backend ở giai đoạn tiếp theo
+### Backend foundation đã có
 
-- PostgreSQL, API, đăng nhập, RBAC và audit log bất biến.
-- Nhập kho theo PO và quét nhiều thiết bị liên tục.
+- PostgreSQL/Prisma, local authentication, session cookie, RBAC cơ bản và department scope.
+- Transaction riêng cho cấp phát/cho mượn, thu hồi, điều chuyển và bảo trì.
+- Snapshot tài sản, history và audit được ghi cùng database transaction.
+- Partial unique index khóa một Assignment mở và một Maintenance mở trên mỗi tài sản.
+- Microsoft 365/Entra ID và LDAP synchronization chạy qua backend.
+
+### Còn lại trước v1.0
+
+- Hoàn tất kết nối mọi frontend write flow sang API; loại bỏ local state ngoài demo mode.
+- Nhập kho theo PO, import staging và quét nhiều thiết bị liên tục.
 - Đợt kiểm kê, đối soát và duyệt chênh lệch.
-- Ký nhận, email nhắc hạn và file biên bản.
-- Import Excel, export báo cáo và tích hợp hệ thống nhân sự.
+- Ký nhận, email outbox/worker, file biên bản và attachment checksum.
 
 ## Nguồn tham khảo
 

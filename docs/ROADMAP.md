@@ -14,7 +14,7 @@ Roadmap triển khai tuần tự. Một sprint chỉ được đánh dấu hoàn
 | S08 | Vendor, purchase request, PO và nhập hàng | Chưa bắt đầu |
 | S09 | Maintenance, lifecycle và attachments | Chưa bắt đầu |
 | S10 | Immutable audit, report, Excel/CSV | Chưa bắt đầu |
-| S11 | AD/LDAP, Entra ID, API và notification | Chưa bắt đầu |
+| S11 | AD/LDAP, Entra ID, API và notification | Đang thực hiện — directory sync cơ bản đã có, SSO/notification chưa làm |
 | S12 | Docker hardening, security review và GitHub release | Chưa bắt đầu |
 
 ## Quy tắc kỹ thuật

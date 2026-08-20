@@ -76,9 +76,7 @@ Internet / LAN / VPN
 | `APP_DOMAIN` | Hostname Caddy tiếp nhận |
 | `DATABASE_URL` | Chuỗi kết nối DB chỉ API/Worker biết |
 | `POSTGRES_*` | Khởi tạo database, truyền bằng secret |
-| `JWT_PRIVATE_KEY_FILE` | Khóa ký access token, mount read-only |
-| `JWT_PUBLIC_KEY_FILE` | Khóa xác minh token |
-| `DATA_ENCRYPTION_KEY_FILE` | Khóa mã hóa trường nhạy cảm |
+| `DATA_ENCRYPTION_KEY_FILE` | Khóa AES-256-GCM mã hóa secret LDAP/Microsoft 365 |
 | `SMTP_*` | Mail host/port/user; password dùng secret file |
 | `STORAGE_*` | File system hoặc S3-compatible |
 | `TRUSTED_PROXY_CIDRS` | Proxy được phép cung cấp forwarded headers |
@@ -95,8 +93,8 @@ Không commit `.env`, private key, SMTP password hay backup vào source control.
 
 ## 7. Lộ trình chuyển prototype
 
-1. Giữ frontend hiện tại làm UI reference; đóng băng cấu trúc `localStorage`.
-2. Tạo API, migration PostgreSQL và seed role/permission.
-3. Thay từng repository frontend: auth → danh mục → tài sản → giao dịch → import/export.
+1. Giữ frontend hiện tại làm UI reference; chỉ cho phép `localStorage` khi bật demo mode.
+2. API, PostgreSQL migration, local auth, directory sync và transaction lifecycle lõi đã có foundation.
+3. Tiếp tục thay từng repository frontend: danh mục → tài sản write commands → giao dịch → import/export.
 4. Chạy migration dữ liệu demo một lần; sau đó xóa hoàn toàn logic phân quyền frontend-only.
 5. Đóng gói image, kiểm thử cài mới, nâng cấp, backup và restore trên Windows + Ubuntu.

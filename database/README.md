@@ -1,17 +1,17 @@
 # Database
 
-PostgreSQL runtime không nằm trong repository. Từ Sprint 02, Prisma là nguồn versioning schema chính:
+PostgreSQL runtime và dữ liệu không nằm trong Git. Nguồn versioning schema duy nhất dùng khi chạy ứng dụng là:
 
-- Schema: `backend/prisma/schema.prisma`
-- Migration: `backend/prisma/migrations/`
-- Seed: `backend/prisma/seed.ts`
+- Schema: `apps/api/prisma/schema.prisma`
+- Migration: `apps/api/prisma/migrations/`
+- Seed phát triển: `apps/api/prisma/seed.ts`
 
-Các SQL trong `database/migrations/` là thiết kế prototype trước Prisma và không được chạy cùng Prisma trên database mới.
-
-Khởi tạo development database:
+`database/reference/` chứa SQL thiết kế cũ để tra cứu. Không chạy các file này cùng Prisma và không mount vào `docker-entrypoint-initdb.d`.
 
 ```bash
 docker compose up -d postgres
-npm run db:migrate --workspace @assetflow/backend
-npm run db:seed --workspace @assetflow/backend
+npm run db:migrate
+npm run db:seed
 ```
+
+Database không publish cổng trong cấu hình self-host. Chỉ API được tham gia private network `data` và có quyền kết nối PostgreSQL.

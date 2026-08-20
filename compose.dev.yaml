@@ -1,0 +1,17 @@
+services:
+  api:
+    image: assetflow-backend:dev
+    pull_policy: build
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+
+  web:
+    image: assetflow-frontend:dev
+    pull_policy: build
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      args:
+        VITE_API_URL: /api/v1
+        VITE_DEMO_MODE: "false"

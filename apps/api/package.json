@@ -1,0 +1,41 @@
+{
+  "name": "@assetflow/api",
+  "private": true,
+  "version": "0.1.0",
+  "description": "AssetFlow REST API",
+  "type": "commonjs",
+  "scripts": {
+    "dev": "nest start --watch",
+    "build": "nest build",
+    "test": "tsx --test test/**/*.test.ts",
+    "prisma:generate": "prisma generate",
+    "start": "node dist/main.js",
+    "db:migrate": "prisma migrate deploy",
+    "db:validate": "prisma validate",
+    "db:seed": "prisma db seed"
+  },
+  "dependencies": {
+    "@nestjs/common": "^11.0.0",
+    "@nestjs/config": "^4.0.0",
+    "@nestjs/core": "^11.0.0",
+    "@nestjs/platform-express": "^11.0.0",
+    "@nestjs/swagger": "^11.0.0",
+    "@prisma/client": "6.12.0",
+    "class-transformer": "^0.5.1",
+    "class-validator": "^0.14.2",
+    "ldapts": "^9.0.0",
+    "prisma": "6.12.0",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.2"
+  },
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
+  },
+  "devDependencies": {
+    "@nestjs/cli": "^11.0.0",
+    "@types/express": "^5.0.0",
+    "@types/node": "^24.0.0",
+    "tsx": "^4.20.0",
+    "typescript": "^5.9.0"
+  }
+}

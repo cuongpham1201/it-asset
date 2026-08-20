@@ -2,12 +2,24 @@
   "name": "assetflow",
   "private": true,
   "version": "0.1.0",
-  "workspaces": ["frontend", "backend"],
+  "engines": {"node": ">=22"},
+  "workspaces": ["apps/*", "packages/*"],
   "scripts": {
-    "dev": "npm run dev --workspace @assetflow/frontend",
-    "build": "npm run build --workspaces --if-present",
-    "build:frontend": "npm run build --workspace @assetflow/frontend",
-    "build:backend": "npm run build --workspace @assetflow/backend",
-    "preview": "npm run preview --workspace @assetflow/frontend"
+    "dev": "npm run dev --workspace @assetflow/web",
+    "dev:web": "npm run dev --workspace @assetflow/web",
+    "dev:api": "npm run dev --workspace @assetflow/api",
+    "build": "npm run build:api && npm run build:web",
+    "build:web": "npm run build --workspace @assetflow/web",
+    "build:api": "npm run build --workspace @assetflow/api",
+    "build:frontend": "npm run build --workspace @assetflow/web",
+    "build:backend": "npm run build --workspace @assetflow/api",
+    "test": "npm run test --workspace @assetflow/api",
+    "db:migrate": "npm run db:migrate --workspace @assetflow/api",
+    "db:seed": "npm run db:seed --workspace @assetflow/api",
+    "db:generate": "npm run prisma:generate --workspace @assetflow/api",
+    "db:validate": "npm run db:validate --workspace @assetflow/api",
+    "generate:templates": "node scripts/generate-intake-template.mjs",
+    "preview": "npm run preview --workspace @assetflow/web",
+    "verify": "npm run build && npm run test && npm audit --audit-level=high"
   }
 }

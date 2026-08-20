@@ -16,6 +16,7 @@ concurrency:
 jobs:
   test-and-build:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -23,7 +24,13 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      - name: Validate Prisma schema
+        run: npm run db:validate
+        env:
+          DATABASE_URL: postgresql://assetflow:assetflow@localhost:5432/assetflow
       - run: npm run build
+      - name: Unit and service tests
+        run: npm run test
       - name: Dependency security audit
         run: npm audit --audit-level=high
       - name: Filesystem and secret scan
@@ -36,12 +43,43 @@ jobs:
           ignore-unfixed: true
           exit-code: "1"
 
+  migration-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: assetflow
+          POSTGRES_USER: assetflow
+          POSTGRES_PASSWORD: assetflow_ci_password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U assetflow -d assetflow"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 20
+    env:
+      DATABASE_URL: postgresql://assetflow:assetflow_ci_password@localhost:5432/assetflow
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Apply all migrations on a clean PostgreSQL database
+        run: npm run db:migrate
+      - name: Verify migration state
+        run: npx prisma migrate status --schema apps/api/prisma/schema.prisma
+
   docker-build:
-    needs: test-and-build
+    needs: [test-and-build, migration-smoke]
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        component: [frontend, backend]
+        component: [web, api]
     steps:
       - uses: actions/checkout@v4
       - uses: docker/setup-buildx-action@v3
@@ -49,8 +87,17 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: .
-          file: ${{ matrix.component }}/Dockerfile
+          file: apps/${{ matrix.component }}/Dockerfile
           push: false
+          load: true
           tags: assetflow-${{ matrix.component }}:ci
           cache-from: type=gha,scope=${{ matrix.component }}
           cache-to: type=gha,mode=max,scope=${{ matrix.component }}
+      - name: Scan ${{ matrix.component }} image
+        uses: aquasecurity/trivy-action@0.30.0
+        with:
+          image-ref: assetflow-${{ matrix.component }}:ci
+          scanners: vuln,secret,misconfig
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: "1"

@@ -1,0 +1,81 @@
+name: assetflow
+
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "5"
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-assetflow}
+      POSTGRES_USER: ${POSTGRES_USER:-assetflow}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+    volumes: ["assetflow_pgdata:/var/lib/postgresql/data"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 15
+    networks: [data]
+    security_opt: ["no-new-privileges:true"]
+    logging: *default-logging
+
+  api:
+    image: ${ASSETFLOW_REGISTRY:-ghcr.io/duclamtk39}/assetflow-backend:${ASSETFLOW_VERSION:-latest}
+    pull_policy: always
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      APP_VERSION: ${ASSETFLOW_VERSION:-latest}
+      CORS_ORIGIN: ${APP_URL:-http://localhost:8080}
+      COOKIE_SECURE: "false"
+      SESSION_TTL_HOURS: ${SESSION_TTL_HOURS:-12}
+      TZ: ${TZ:-Asia/Ho_Chi_Minh}
+      DIRECTORY_ENCRYPTION_KEY: ${DIRECTORY_ENCRYPTION_KEY:-}
+      ALLOW_INSECURE_LDAP: "false"
+      DATABASE_HOST: postgres
+      DATABASE_PORT: 5432
+      DATABASE_NAME: ${POSTGRES_DB:-assetflow}
+      DATABASE_USER: ${POSTGRES_USER:-assetflow}
+      DATABASE_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - assetflow_documents:/var/lib/assetflow/documents
+    networks: [edge, data]
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: ["ALL"]
+    read_only: true
+    tmpfs: ["/tmp:size=64m,noexec,nosuid"]
+    logging: *default-logging
+
+  web:
+    image: ${ASSETFLOW_REGISTRY:-ghcr.io/duclamtk39}/assetflow-frontend:${ASSETFLOW_VERSION:-latest}
+    pull_policy: always
+    restart: unless-stopped
+    ports:
+      - "${APP_PORT:-8080}:8080"
+    depends_on:
+      api:
+        condition: service_healthy
+    networks: [edge]
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: ["ALL"]
+    read_only: true
+    tmpfs: ["/tmp:size=16m,noexec,nosuid"]
+    logging: *default-logging
+
+networks:
+  edge:
+  data:
+    internal: true
+
+volumes:
+  assetflow_pgdata:
+  assetflow_documents:

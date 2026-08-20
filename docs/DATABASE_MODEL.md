@@ -49,13 +49,13 @@ command transaction ── audit_logs (append-only)
 10. Mỗi asset chỉ có tối đa một maintenance record mở.
 11. `DISPOSED` là terminal state và không được quay lại vòng đời hoạt động.
 
-## Business gate
+## Trạng thái implementation
 
-`backend/prisma/schema.prisma` hiện là provisional. Không tạo migration production cho tới khi lifecycle status, field contract, transition matrix, history event và tenant scope trong `ASSETFLOW_SPRINT02_DEPLOY.md` được duyệt.
+Migration `202608200002_asset_lifecycle_transactions` đã hiện thực các bảng nguồn cho Assignment/Loan, Return, Transfer và Maintenance; có partial unique index khóa một Assignment mở và một Maintenance mở trên mỗi tài sản. API lifecycle cập nhật transaction, snapshot tài sản, history và audit trong cùng database transaction. Inventory session, outbox/email worker, attachment checksum và multi-organization vẫn thuộc roadmap trước v1.0.
 
 ## Dữ liệu nhạy cảm
 
-- Password chỉ lưu hash Argon2id.
+- Password local chỉ lưu hash scrypt kèm salt riêng; không lưu plaintext hoặc mã hóa thuận nghịch.
 - Refresh token chỉ lưu SHA-256/HMAC hash.
 - SMTP password, JWT private key và data encryption key không lưu trong bảng cấu hình.
 - Trường cần mã hóa ứng dụng phải dùng envelope encryption; DB chỉ giữ ciphertext + key version.

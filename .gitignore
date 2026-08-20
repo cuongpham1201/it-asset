@@ -1,15 +1,36 @@
+# Dependencies and generated output
 node_modules/
+**/node_modules/
 dist/
-frontend/dist/
-backend/dist/
-*.tsbuildinfo
-.env
-.env.local
-.env.*.local
-*.log
-!.env.example
+**/dist/
 coverage/
-uploads/
-deploy/secrets/
+**/coverage/
+*.tsbuildinfo
+*.log
+
+# Local configuration and credentials
+.env
+**/.env
+.env.*
+**/.env.*
+!.env.example
+!**/.env.example
+secrets/
+**/secrets/
 *.pem
 *.key
+*.p12
+*.pfx
+
+# Runtime data must live outside Git
+uploads/
+storage/
+backups/
+*.dump
+*.sql.gz
+
+# Editors and operating systems
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
