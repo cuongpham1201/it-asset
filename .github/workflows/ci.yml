@@ -34,7 +34,7 @@ jobs:
       - name: Dependency security audit
         run: npm audit --audit-level=high
       - name: Filesystem and secret scan
-        uses: aquasecurity/trivy-action@0.30.0
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
           scan-type: fs
           scan-ref: .
@@ -94,7 +94,7 @@ jobs:
           cache-from: type=gha,scope=${{ matrix.component }}
           cache-to: type=gha,mode=max,scope=${{ matrix.component }}
       - name: Scan ${{ matrix.component }} image
-        uses: aquasecurity/trivy-action@0.30.0
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
           image-ref: assetflow-${{ matrix.component }}:ci
           scanners: vuln,secret,misconfig
