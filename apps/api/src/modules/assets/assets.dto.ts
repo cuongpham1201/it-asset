@@ -29,6 +29,12 @@ export class CreateAssetDto{
   @IsOptional() @IsDateString() purchaseDate?:string
   @IsOptional() @Type(()=>Number) @IsNumber() @Min(0) purchaseCost?:number
   @IsOptional() @Type(()=>Number) @IsInt() @Min(0) warrantyMonths?:number
+  @IsOptional() @IsString() @MaxLength(200) cpu?:string
+  @IsOptional() @IsString() @MaxLength(200) ram?:string
+  @IsOptional() @IsString() @MaxLength(200) storage?:string
+  @IsOptional() @IsString() @MaxLength(200) operatingSystem?:string
+  @IsOptional() @IsString() @MaxLength(64) ipAddress?:string
+  @IsOptional() @IsString() @MaxLength(64) macAddress?:string
   @IsOptional() @IsString() @MaxLength(5000) notes?:string
 }
 

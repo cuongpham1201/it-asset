@@ -51,6 +51,8 @@ command transaction ── audit_logs (append-only)
 
 ## Trạng thái implementation
 
+Frontend production đã chuyển các thao tác tài sản và lifecycle sang REST API; lịch sử hiển thị từ `asset_history`, không còn khởi tạo bằng lịch sử mẫu trong trình duyệt. Cấu hình thương hiệu, email và khu vực được lưu trong `application_settings`. Dữ liệu demo chỉ được seed khi chủ động đặt `ASSETFLOW_DEMO_SEED=true`.
+
 Migration `202608200002_asset_lifecycle_transactions` đã hiện thực các bảng nguồn cho Assignment/Loan, Return, Transfer và Maintenance; có partial unique index khóa một Assignment mở và một Maintenance mở trên mỗi tài sản. API lifecycle cập nhật transaction, snapshot tài sản, history và audit trong cùng database transaction. Inventory session, outbox/email worker, attachment checksum và multi-organization vẫn thuộc roadmap trước v1.0.
 
 ## Dữ liệu nhạy cảm

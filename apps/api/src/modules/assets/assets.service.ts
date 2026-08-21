@@ -4,7 +4,7 @@ import { PrismaService } from '../../database/prisma.service'
 import { CreateAssetDto,ListAssetsQuery,UpdateAssetDto } from './assets.dto'
 
 type Actor={id:string;role:string;departmentId:string|null}
-const include={category:true,model:true,manufacturer:true,status:true,assignedUser:true,currentCustodian:{include:{department:true,location:true}},department:true,location:true,warehouse:true} as const
+const include={category:true,model:true,manufacturer:true,status:true,assignedUser:true,currentCustodian:{include:{department:true,location:true}},department:true,location:true,warehouse:true,assignments:{where:{status:'OPEN' as const},orderBy:{createdAt:'desc' as const},take:1}} as const
 
 @Injectable()
 export class AssetsService{
@@ -50,14 +50,14 @@ export class AssetsService{
       const status=await tx.assetStatus.findUnique({where:{code:'READY'}});if(!status)throw new BadRequestException('Thiếu trạng thái READY; hãy chạy migration mới nhất')
       const warehouse=await tx.warehouse.findFirst({where:{id:body.warehouseId,status:'ACTIVE'}});if(!warehouse)throw new BadRequestException('Kho nhập không hợp lệ')
       if(body.locationId&&body.locationId!==warehouse.locationId)throw new BadRequestException('Vị trí nhập phải thuộc kho đã chọn')
-      const asset=await tx.asset.create({data:{assetTag:body.assetTag.trim(),name:body.name.trim(),serialNumber:body.serialNumber?.trim()||null,barcode:body.barcode.trim(),categoryId:body.categoryId,modelId:body.modelId,manufacturerId:body.manufacturerId,statusId:status.id,warehouseId:warehouse.id,locationId:warehouse.locationId,purchaseDate:body.purchaseDate?new Date(body.purchaseDate):undefined,purchaseCost:body.purchaseCost,warrantyMonths:body.warrantyMonths,notes:body.notes?.trim()},include})
+      const asset=await tx.asset.create({data:{assetTag:body.assetTag.trim(),name:body.name.trim(),serialNumber:body.serialNumber?.trim()||null,barcode:body.barcode.trim(),categoryId:body.categoryId,modelId:body.modelId,manufacturerId:body.manufacturerId,statusId:status.id,warehouseId:warehouse.id,locationId:warehouse.locationId,purchaseDate:body.purchaseDate?new Date(body.purchaseDate):undefined,purchaseCost:body.purchaseCost,warrantyMonths:body.warrantyMonths,cpu:body.cpu?.trim(),ram:body.ram?.trim(),storage:body.storage?.trim(),operatingSystem:body.operatingSystem?.trim(),ipAddress:body.ipAddress?.trim(),macAddress:body.macAddress?.trim(),notes:body.notes?.trim()},include})
       await tx.assetHistory.create({data:{assetId:asset.id,action:AssetHistoryAction.CREATED,toLocationId:warehouse.locationId,description:`Nhập kho ${warehouse.name}`,performedBy:actor.id}})
       await tx.auditLog.create({data:{userId:actor.id,action:'ASSET_RECEIVED',entityType:'Asset',entityId:asset.id,newValues:{assetTag:asset.assetTag,status:'READY',warehouseId:warehouse.id} as Prisma.InputJsonValue}});return asset
     })}catch(error:any){if(error?.code==='P2002')throw new ConflictException({code:'ASSET_IDENTITY_EXISTS',message:'Mã tài sản, barcode hoặc serial đã tồn tại'});throw error}
   }
 
   async update(id:string,body:UpdateAssetDto,actor:Actor){
-    const current=await this.get(id,actor),normalized={...body,assetTag:body.assetTag?.trim(),name:body.name?.trim(),barcode:body.barcode?.trim(),serialNumber:body.serialNumber?.trim()||undefined,purchaseDate:body.purchaseDate?new Date(body.purchaseDate):undefined}
+    const current=await this.get(id,actor),normalized={...body,assetTag:body.assetTag?.trim(),name:body.name?.trim(),barcode:body.barcode?.trim(),serialNumber:body.serialNumber?.trim()||undefined,purchaseDate:body.purchaseDate?new Date(body.purchaseDate):undefined,cpu:body.cpu?.trim(),ram:body.ram?.trim(),storage:body.storage?.trim(),operatingSystem:body.operatingSystem?.trim(),ipAddress:body.ipAddress?.trim(),macAddress:body.macAddress?.trim()}
     try{return await this.db.$transaction(async tx=>{const asset=await tx.asset.update({where:{id},data:normalized,include});await tx.assetHistory.create({data:{assetId:id,action:AssetHistoryAction.UPDATED,description:'Cập nhật thông tin tài sản',performedBy:actor.id}});await tx.auditLog.create({data:{userId:actor.id,action:'ASSET_METADATA_UPDATED',entityType:'Asset',entityId:id,oldValues:{assetTag:current.assetTag,name:current.name,serialNumber:current.serialNumber} as Prisma.InputJsonValue,newValues:body as Prisma.InputJsonValue}});return asset})}catch(error:any){if(error?.code==='P2002')throw new ConflictException('Mã tài sản, barcode hoặc serial đã tồn tại');throw error}
   }
 

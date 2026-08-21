@@ -9,6 +9,7 @@ type AuthRequest=Request&{authUser:{id:string;role:string;departmentId:string|nu
 @Controller()
 export class LifecycleController{
   constructor(private readonly lifecycle:LifecycleService){}
+  @Get('asset-history') allHistory(@Req() req:AuthRequest){return this.lifecycle.allHistory(req.authUser)}
   @Get('assets/:id/lifecycle') history(@Param('id',ParseUUIDPipe) id:string,@Req() req:AuthRequest){return this.lifecycle.history(id,req.authUser)}
   @Post('assets/:id/assignments') assign(@Param('id',ParseUUIDPipe) id:string,@Body() body:AssignAssetDto,@Req() req:AuthRequest){return this.lifecycle.assign(id,body,req.authUser)}
   @Post('assets/:id/returns') returnAsset(@Param('id',ParseUUIDPipe) id:string,@Body() body:ReturnAssetDto,@Req() req:AuthRequest){return this.lifecycle.returnAsset(id,body,req.authUser)}

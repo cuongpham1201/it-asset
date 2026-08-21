@@ -1,6 +1,9 @@
 import { PrismaClient } from '@prisma/client'
 const db=new PrismaClient()
 async function main(){
+  if(process.env.ASSETFLOW_DEMO_SEED!=='true'){
+    throw new Error('Demo seed is disabled. Set ASSETFLOW_DEMO_SEED=true only for a disposable local/demo database.')
+  }
   const departmentNames=['IT','Marketing','Kinh doanh','Hành chính','Kế toán']
   const departments=[]
   for(const [i,name] of departmentNames.entries())departments.push(await db.department.upsert({where:{code:`D${i+1}`},update:{name},create:{code:`D${i+1}`,name}}))

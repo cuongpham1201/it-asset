@@ -1,0 +1,7 @@
+ALTER TABLE "assets"
+  ADD COLUMN "cpu" VARCHAR(200),
+  ADD COLUMN "ram" VARCHAR(200),
+  ADD COLUMN "storage" VARCHAR(200),
+  ADD COLUMN "operatingSystem" VARCHAR(200),
+  ADD COLUMN "ipAddress" VARCHAR(64),
+  ADD COLUMN "macAddress" VARCHAR(64);

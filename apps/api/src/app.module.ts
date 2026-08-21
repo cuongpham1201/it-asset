@@ -11,6 +11,9 @@ import { UsersModule } from './modules/users/users.module'
 import { PeopleModule } from './modules/people/people.module'
 import { CategoriesModule } from './modules/categories/categories.module'
 import { LifecycleModule } from './modules/lifecycle/lifecycle.module'
+import { SettingsModule } from './modules/settings/settings.module'
+import { MasterDataModule } from './modules/master-data/master-data.module'
+import { VendorsModule } from './modules/vendors/vendors.module'
 
-@Module({imports:[ConfigModule.forRoot({isGlobal:true}),DatabaseModule,AuthModule,AssetsModule,LookupsModule,DirectoryModule,UsersModule,PeopleModule,CategoriesModule,LifecycleModule],controllers:[HealthController]})
+@Module({imports:[ConfigModule.forRoot({isGlobal:true}),DatabaseModule,AuthModule,AssetsModule,LookupsModule,DirectoryModule,UsersModule,PeopleModule,CategoriesModule,LifecycleModule,SettingsModule,MasterDataModule,VendorsModule],controllers:[HealthController]})
 export class AppModule implements NestModule{configure(consumer:MiddlewareConsumer){consumer.apply(RequestLoggerMiddleware).forRoutes('*')}}

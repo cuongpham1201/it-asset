@@ -1,0 +1,21 @@
+CREATE TABLE "vendors" (
+  "id" UUID NOT NULL,
+  "code" VARCHAR(50) NOT NULL,
+  "name" VARCHAR(200) NOT NULL,
+  "taxCode" VARCHAR(50),
+  "category" VARCHAR(150) NOT NULL,
+  "contact" VARCHAR(150) NOT NULL,
+  "email" VARCHAR(255),
+  "phone" VARCHAR(30),
+  "address" TEXT,
+  "certifications" TEXT,
+  "status" VARCHAR(30) NOT NULL,
+  "lastEvaluation" DATE,
+  "score" INTEGER NOT NULL DEFAULT 0,
+  "scores" JSONB NOT NULL DEFAULT '{}',
+  "notes" TEXT,
+  "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT "vendors_pkey" PRIMARY KEY ("id"),
+  CONSTRAINT "vendors_code_key" UNIQUE ("code")
+);

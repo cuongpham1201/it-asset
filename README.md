@@ -7,7 +7,7 @@
 AssetFlow là phần mềm mã nguồn mở, self-host dùng để quản lý vòng đời tài sản: nhập kho, cấp phát, cho mượn, thu hồi, điều chuyển, bảo trì và kiểm kê.
 <img width="1918" height="896" alt="image" src="https://github.com/user-attachments/assets/3c08f739-0f92-41ba-93b2-f5fdcfcedd4d" />
 
-> AssetFlow hiện ở giai đoạn trước v1.0. Backend đã có local auth, scope phòng ban, audit và transaction lifecycle lõi; một số màn hình frontend vẫn đang chuyển từ prototype/local state sang API. Chỉ dùng bản hiện tại để staging/đánh giá, chưa dùng dữ liệu nhạy cảm trên Internet.
+> **Phiên bản hiện tại: v2.0.0 (UAT).** Frontend nghiệp vụ đã đọc/ghi qua REST API và PostgreSQL; demo seed được tắt mặc định. Hãy hoàn tất UAT, cấu hình HTTPS, backup và kiểm tra restore trước khi dùng dữ liệu thật.
 
 ## Cài nhanh bằng Docker
 
@@ -17,7 +17,7 @@ Yêu cầu: Docker Engine hoặc Docker Desktop và Docker Compose v2.
 git clone https://github.com/duclamtk39/assetIT.git
 cd assetIT
 cp .env.example .env
-# đặt POSTGRES_PASSWORD mạnh và ghim ASSETFLOW_VERSION
+# đặt POSTGRES_PASSWORD mạnh; ASSETFLOW_VERSION mặc định là 2.0.0
 docker compose pull
 docker compose up -d
 ```
@@ -105,7 +105,24 @@ npm run dev
 
 Các lệnh chính: `npm run dev:web`, `npm run dev:api`, `npm run build`, `npm run verify`. Chỉ bật dữ liệu mẫu ở local bằng `VITE_DEMO_MODE=true`.
 
-## Cập nhật
+Dữ liệu mẫu của PostgreSQL cũng bị khóa mặc định. Chỉ seed một database dùng thử có thể xóa bỏ bằng cách đặt `ASSETFLOW_DEMO_SEED=true` rồi chạy `npm run db:seed`. Container production không chạy seed và frontend production được build với `VITE_DEMO_MODE=false`.
+
+Ở chế độ triển khai thật, sổ tài sản, lịch sử, danh mục, kho/vị trí, người nhận tài sản và các lệnh nhập kho/cấp phát/cho mượn/thu hồi/điều chuyển đều đọc ghi qua REST API vào PostgreSQL. `localStorage` chỉ được dùng trong demo mode; không phải nguồn dữ liệu nghiệp vụ.
+
+## Cập nhật UAT lên v2.0.0
+
+```bash
+cd assetIT
+git pull --ff-only
+# sửa ASSETFLOW_VERSION=2.0.0 trong .env nếu đang dùng edge hoặc phiên bản cũ
+bash scripts/backup.sh
+docker compose pull
+docker compose up -d
+docker compose ps
+docker compose logs api --tail=100
+```
+
+Nếu chỉ cần theo dõi image thử nghiệm mới nhất trên một môi trường có thể xóa bỏ:
 
 ```bash
 git pull

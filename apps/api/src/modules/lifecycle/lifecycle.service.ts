@@ -58,4 +58,14 @@ export class LifecycleService{
   })}
 
   async history(assetId:string,actor:Actor){this.assertOperator(actor);const asset=await this.db.asset.findFirst({where:{id:assetId,deletedAt:null}});if(!asset)throw new NotFoundException('Không tìm thấy tài sản');this.assertDepartmentScope(actor,asset.departmentId);const [assignments,returns,transfers,maintenance]=await Promise.all([this.db.assetAssignment.findMany({where:{assetId},include:{assignedTo:true,department:true,location:true,actor:{select:{fullName:true}}},orderBy:{createdAt:'desc'}}),this.db.assetReturn.findMany({where:{assetId},include:{warehouse:true,location:true,actor:{select:{fullName:true}}},orderBy:{createdAt:'desc'}}),this.db.assetTransfer.findMany({where:{assetId},include:{fromLocation:true,toLocation:true,actor:{select:{fullName:true}}},orderBy:{createdAt:'desc'}}),this.db.maintenanceRecord.findMany({where:{assetId},include:{actor:{select:{fullName:true}}},orderBy:{createdAt:'desc'}})]);return {assignments,returns,transfers,maintenance}}
+  async allHistory(actor:Actor){
+    this.assertOperator(actor)
+    if(actor.role==='HCNS'&&!actor.departmentId)throw new ForbiddenException('Tài khoản HCNS chưa được gán phòng ban')
+    const data=await this.db.assetHistory.findMany({
+      where:{asset:{deletedAt:null,...(actor.role==='HCNS'?{departmentId:actor.departmentId}:{})}},
+      include:{asset:{select:{id:true,assetTag:true,name:true}},actor:{select:{fullName:true}},fromLocation:{select:{name:true}},toLocation:{select:{name:true}}},
+      orderBy:{createdAt:'desc'},take:1000,
+    })
+    return {data}
+  }
 }
