@@ -2,6 +2,12 @@
 
 Các thay đổi đáng chú ý của AssetFlow được ghi tại đây theo Semantic Versioning.
 
+## [2.0.1] - 2026-08-21
+
+### Fixed
+
+- Khóa npm cache dùng chung giữa các BuildKit stage/platform để loại bỏ lỗi race khi build image đa kiến trúc trên GitHub Actions.
+
 ## [2.0.0] - 2026-08-21
 
 ### Added
@@ -23,4 +29,5 @@ Các thay đổi đáng chú ý của AssetFlow được ghi tại đây theo Se
 - Dữ liệu demo và lịch sử mẫu không còn được khởi tạo trong production.
 - Cấu hình nhạy cảm tiếp tục được xử lý tại backend; secret directory không được gửi lại trình duyệt.
 
+[2.0.1]: https://github.com/duclamtk39/assetIT/releases/tag/v2.0.1
 [2.0.0]: https://github.com/duclamtk39/assetIT/releases/tag/v2.0.0

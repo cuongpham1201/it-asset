@@ -4,7 +4,7 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 COPY apps/web/package.json ./apps/web/package.json
 COPY apps/api/package.json ./apps/api/package.json
-RUN --mount=type=cache,target=/root/.npm npm ci
+RUN --mount=type=cache,target=/root/.npm,sharing=locked npm ci
 COPY apps/web ./apps/web
 ARG VITE_API_URL=/api/v1
 ARG VITE_DEMO_MODE=false
