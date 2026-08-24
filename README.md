@@ -14,8 +14,9 @@ AssetFlow là phần mềm self-hosted quản lý vòng đời tài sản: nhậ
 
 - Linux 64-bit có Docker Engine và Docker Compose v2.
 - Git, OpenSSL và tối thiểu 4 GB RAM, 2 CPU, 20 GB dung lượng trống.
-- Một hostname có DNS trỏ về server, ví dụ `assets.company.vn`.
-- Cho phép TCP `80/443` từ mạng sử dụng. Không mở PostgreSQL ra ngoài Docker.
+- IP LAN tĩnh hoặc DHCP reservation, ví dụ `192.168.50.15`.
+- Cho phép TCP `80` từ mạng nội bộ. Khi chuyển sang domain/HTTPS, mở thêm `443`.
+- Không mở PostgreSQL ra ngoài Docker.
 - Hai package GHCR phải ở chế độ public; nếu đang private, chạy `docker login ghcr.io` trước khi pull.
 
 Kiểm tra:
@@ -41,7 +42,15 @@ chmod +x init.sh ../../../scripts/*.sh
 
 `init.sh` tạo `.env` và các secret ngẫu nhiên với quyền truy cập hạn chế. Không commit hoặc gửi các file trong `secrets/` qua chat/email.
 
-### 3. Cấu hình URL và phiên bản
+Nếu server đã chạy `init.sh` từ phiên bản cũ, sửa quyền secret một lần trước khi khởi động lại:
+
+```bash
+cd /opt/assetIT/infra/docker/production
+chmod 700 secrets
+chmod 644 secrets/*.txt
+```
+
+### 3. Cấu hình IP nội bộ và phiên bản
 
 Mở `/opt/assetIT/infra/docker/production/.env` và sửa tối thiểu:
 
@@ -51,12 +60,21 @@ REGISTRY_PREFIX=ghcr.io/duclamtk39
 # UAT dùng edge để nhận bản mới nhất từ main.
 ASSETFLOW_VERSION=edge
 
-APP_DOMAIN=assets.company.vn
-APP_URL=https://assets.company.vn
+APP_DOMAIN=http://192.168.50.15
+APP_URL=http://192.168.50.15
+COOKIE_SECURE=false
 TZ=Asia/Ho_Chi_Minh
 ```
 
 `edge` chỉ dùng cho UAT/pilot. Môi trường vận hành thật phải ghim tag release bất biến, ví dụ `ASSETFLOW_VERSION=2.2.0`, sau khi tag đó đã được phát hành trên GitHub/GHCR.
+
+Khi có domain, đổi sang HTTPS và bật cookie bảo mật:
+
+```env
+APP_DOMAIN=assets.company.vn
+APP_URL=https://assets.company.vn
+COOKIE_SECURE=true
+```
 
 ### 4. Khởi động
 
@@ -69,12 +87,12 @@ docker compose ps
 docker compose logs --tail=100 migrate api web proxy
 ```
 
-Caddy tự cấp chứng chỉ TLS khi DNS hợp lệ và server truy cập được Internet trên cổng `80/443`.
+Cấu hình HTTP-IP không yêu cầu chứng chỉ TLS và chỉ phù hợp LAN/VPN tin cậy. Khi chuyển sang domain, Caddy tự cấp chứng chỉ TLS nếu DNS hợp lệ và server nhận được kết nối trên `80/443`.
 
 Kiểm tra readiness:
 
 ```bash
-curl -fsS https://assets.company.vn/api/v1/health/ready
+curl -fsS http://192.168.50.15/api/v1/health/ready
 ```
 
 Đăng nhập lần đầu:
@@ -99,7 +117,7 @@ cd infra/docker/production
 docker compose pull
 docker compose up -d
 docker compose ps
-curl -fsS https://assets.company.vn/api/v1/health/ready
+curl -fsS http://192.168.50.15/api/v1/health/ready
 ```
 
 `git pull` chỉ cập nhật cấu hình; `docker compose pull` mới tải image mới. Container `migrate` phải hoàn tất thành công trước khi API được khởi động.
@@ -136,8 +154,8 @@ Cấu hình tại **Cài đặt → Danh tính & người dùng**. Sau khi test 
 
 ```bash
 cd /opt/assetIT
-ASSETFLOW_URL=https://assets.company.vn DIRECTORY_PROVIDER=M365 ./scripts/directory-live-test.sh
-ASSETFLOW_URL=https://assets.company.vn DIRECTORY_PROVIDER=LDAP ./scripts/directory-live-test.sh
+ASSETFLOW_URL=http://192.168.50.15 DIRECTORY_PROVIDER=M365 ./scripts/directory-live-test.sh
+ASSETFLOW_URL=http://192.168.50.15 DIRECTORY_PROVIDER=LDAP ./scripts/directory-live-test.sh
 ```
 
 Chỉ thêm `DIRECTORY_RUN_SYNC=true` khi đã kiểm tra phạm vi người dùng, phòng ban và vai trò sẽ đồng bộ.

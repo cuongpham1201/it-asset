@@ -8,26 +8,37 @@ Cấu hình này chạy Caddy, Web, API và PostgreSQL trên mạng Docker tách
 cd infra/docker/production
 cp .env.example .env
 mkdir -p secrets
+chmod 700 secrets
 openssl rand -hex 32 > secrets/postgres_bootstrap_password.txt
 openssl rand -hex 32 > secrets/postgres_migration_password.txt
 openssl rand -hex 32 > secrets/postgres_runtime_password.txt
 openssl rand -base64 32 > secrets/data_encryption_key.txt
 openssl rand -hex 32 > secrets/metrics_token.txt
 openssl rand -base64 24 > secrets/initial_admin_password.txt
-chmod 600 secrets/*.txt
+chmod 644 secrets/*.txt
 ```
 
-Sửa domain, URL và tag release bất biến trong `.env`, sau đó:
+Với UAT chỉ truy cập trong LAN bằng IP, cấu hình:
+
+```env
+APP_DOMAIN=http://192.168.50.15
+APP_URL=http://192.168.50.15
+COOKIE_SECURE=false
+```
+
+Khi có domain và HTTPS, đổi `APP_DOMAIN`, `APP_URL` sang domain thật và đặt `COOKIE_SECURE=true`. Sau đó:
 
 ```bash
 docker compose config --quiet
 docker compose pull
 docker compose up -d
 docker compose ps
-curl -fsS https://assets.example.com/api/v1/health/ready
+curl -fsS http://192.168.50.15/api/v1/health/ready
 ```
 
-Đăng nhập bằng `admin` và mật khẩu trong `initial_admin_password.txt`; hệ thống bắt buộc đổi mật khẩu lần đầu. Không commit `.env`, `secrets/` hoặc backup.
+Đăng nhập bằng `admin` và mật khẩu trong `initial_admin_password.txt`; hệ thống bắt buộc đổi mật khẩu lần đầu. Thư mục `secrets` có mode `700`; file bên trong có mode `644` để Compose mount cho API non-root đọc được nhưng người dùng khác trên host không thể truy cập qua thư mục. Không commit `.env`, `secrets/` hoặc backup.
+
+Server đã khởi tạo bằng bản cũ cần chạy một lần `chmod 700 secrets && chmod 644 secrets/*.txt` để sửa lỗi container non-root không đọc được file-backed secrets.
 
 ## Monitoring và cảnh báo
 
