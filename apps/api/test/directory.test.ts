@@ -6,7 +6,7 @@ import { DirectoryService } from '../src/modules/directory/directory.service'
 test('directory secret encryption is authenticated and reversible',()=>{
   const previous=process.env.DIRECTORY_ENCRYPTION_KEY
   process.env.DIRECTORY_ENCRYPTION_KEY=Buffer.alloc(32,7).toString('base64')
-  try{const crypto=new DirectoryCryptoService();const encrypted=crypto.encrypt('not-a-real-secret');assert.notEqual(encrypted,'not-a-real-secret');assert.equal(crypto.decrypt(encrypted),'not-a-real-secret');assert.throws(()=>crypto.decrypt(`${encrypted.slice(0,-1)}A`))}finally{if(previous===undefined)delete process.env.DIRECTORY_ENCRYPTION_KEY;else process.env.DIRECTORY_ENCRYPTION_KEY=previous}
+  try{const crypto=new DirectoryCryptoService();const encrypted=crypto.encrypt('not-a-real-secret');assert.notEqual(encrypted,'not-a-real-secret');assert.equal(crypto.decrypt(encrypted),'not-a-real-secret');const parts=encrypted.split('.');const tampered=Buffer.from(parts[3],'base64url');tampered[0]^=1;parts[3]=tampered.toString('base64url');assert.throws(()=>crypto.decrypt(parts.join('.')))}finally{if(previous===undefined)delete process.env.DIRECTORY_ENCRYPTION_KEY;else process.env.DIRECTORY_ENCRYPTION_KEY=previous}
 })
 
 test('LDAP configuration blocks clear-text bind by default',()=>{
