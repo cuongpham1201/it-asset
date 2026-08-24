@@ -23,8 +23,8 @@ Sửa `.env`:
 ```env
 ASSETFLOW_VERSION=edge
 REGISTRY_PREFIX=ghcr.io/duclamtk39
-APP_DOMAIN=asset.example.local
-APP_URL=https://asset.example.local
+APP_DOMAIN=assets.example.com
+APP_URL=https://assets.example.com
 ```
 
 Khởi động:
@@ -39,7 +39,7 @@ docker compose ps
 Kiểm tra:
 
 ```bash
-curl -fsS https://asset.example.local/api/v1/health/ready
+curl -fsS https://assets.example.com/api/v1/health/ready
 cat secrets/initial_admin_password.txt
 ```
 
@@ -94,8 +94,8 @@ Prometheus và Alertmanager chỉ bind vào localhost của server tại cổng 
 Cấu hình provider trong **Cài đặt → Danh tính & người dùng**, sau đó kiểm tra trên tenant/domain thật:
 
 ```bash
-ASSETFLOW_URL=https://asset.example.local DIRECTORY_PROVIDER=M365 ./scripts/directory-live-test.sh
-ASSETFLOW_URL=https://asset.example.local DIRECTORY_PROVIDER=LDAP ./scripts/directory-live-test.sh
+ASSETFLOW_URL=https://assets.example.com DIRECTORY_PROVIDER=M365 ./scripts/directory-live-test.sh
+ASSETFLOW_URL=https://assets.example.com DIRECTORY_PROVIDER=LDAP ./scripts/directory-live-test.sh
 ```
 
 Thêm `DIRECTORY_RUN_SYNC=true` sau khi đã duyệt mapping phòng ban và vai trò.
