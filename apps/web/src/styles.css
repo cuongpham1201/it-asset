@@ -382,8 +382,8 @@ input,select,textarea,.enterprise-filters input,.enterprise-filters select,.sear
 .asset-group-filter .asset-group-add{min-width:132px;border-left:1px dashed #8ca2bd;border-right:0;background:#f8fafc;color:#1d5fa9}.asset-group-filter .asset-group-add:hover{background:#eef5fc;border-color:#5e83b4}.asset-group-filter .asset-group-add>span{background:#e5eef9;color:#1d5fa9}.category-quick-add{width:min(620px,calc(100vw - 32px))}.category-quick-add .form-grid{padding:18px;grid-template-columns:1fr 1fr}.category-quick-add .form-error{margin:0 18px;padding:9px 11px;border:1px solid #efb4b4;background:#fff1f1;color:#a22;font-size:12px}.category-quick-add .modal-actions{border-top:1px solid #d9e0e8;padding:12px 18px}
 @media(max-width:680px){.category-quick-add .form-grid{grid-template-columns:1fr}.category-quick-add .form-grid .span-2{grid-column:auto}}
 
-/* Enterprise typography. General Sans is served by Fontshare under its official webfont license. */
-:root{--font-enterprise:"General Sans","Segoe UI",Arial,sans-serif;font-family:var(--font-enterprise)}
+/* Self-hosted enterprise typography with Vietnamese support. */
+:root{--font-enterprise:"Roboto","Segoe UI",Arial,sans-serif;font-family:var(--font-enterprise)}
 html,body,#root,button,input,select,textarea{font-family:var(--font-enterprise)!important;font-variant-numeric:tabular-nums;font-synthesis:none}
 body{font-weight:400;letter-spacing:0;text-rendering:optimizeLegibility;-webkit-font-smoothing:antialiased}
 h1,h2,h3,h4,h5,h6,.brand b,.company-identity b{font-family:var(--font-enterprise)!important;font-weight:600;letter-spacing:-.015em}
@@ -406,6 +406,15 @@ th,.enterprise-asset-table th button,.audit-grid.audit-head{font-family:var(--fo
   letter-spacing:0!important;
 }
 .enterprise-status::before,.status i{font-weight:400}
+
+/* Compact sidebar typography: two pixels smaller and less visually heavy. */
+.sidebar .brand b{font-size:14px!important;font-weight:600!important}
+.sidebar .brand small{font-size:9px!important;font-weight:400!important}
+.sidebar nav button,.sidebar .sidebar-bottom>button{font-size:12px!important;font-weight:400!important}
+.sidebar nav button.active{font-weight:500!important}
+.sidebar .nav-title,.sidebar .nav-section .nav-title{font-size:9px!important;font-weight:600!important}
+.sidebar .profile b{font-size:11px!important;font-weight:500!important}
+.sidebar .profile small{font-size:9px!important;font-weight:400!important}
 
 /* Asset category rail: reserve a separate gutter for the horizontal scrollbar. */
 .asset-group-filter{height:68px!important;min-height:68px;box-sizing:border-box;padding:5px 4px 12px!important;align-items:flex-start;overflow-x:auto;overflow-y:hidden;scrollbar-gutter:stable;overscroll-behavior-inline:contain}

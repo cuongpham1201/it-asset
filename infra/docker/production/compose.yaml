@@ -38,6 +38,7 @@ services:
       CORS_ORIGIN: ${APP_URL}
       COOKIE_SECURE: "true"
       SESSION_TTL_HOURS: ${SESSION_TTL_HOURS:-12}
+      INITIAL_ADMIN_PASSWORD_FILE: /run/secrets/initial_admin_password
       DATABASE_HOST: db
       DATABASE_PORT: "5432"
       DATABASE_NAME: ${POSTGRES_DB}
@@ -45,11 +46,14 @@ services:
       DATABASE_PASSWORD_FILE: /run/secrets/postgres_password
       DATA_ENCRYPTION_KEY_FILE: /run/secrets/data_encryption_key
       ALLOW_INSECURE_LDAP: "false"
+      ENABLE_SWAGGER: "false"
+      TRUST_PROXY: "true"
       STORAGE_PATH: /var/lib/assetflow/documents
       TRUSTED_PROXY_CIDRS: ${TRUSTED_PROXY_CIDRS:-172.16.0.0/12}
     secrets:
       - postgres_password
       - data_encryption_key
+      - initial_admin_password
     volumes:
       - document_data:/var/lib/assetflow/documents
     depends_on:
@@ -111,3 +115,5 @@ secrets:
     file: ./secrets/postgres_password.txt
   data_encryption_key:
     file: ./secrets/data_encryption_key.txt
+  initial_admin_password:
+    file: ./secrets/initial_admin_password.txt

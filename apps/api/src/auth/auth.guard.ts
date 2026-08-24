@@ -8,7 +8,7 @@ export function readSessionCookie(request:Request){
   const raw=request.headers.cookie||''
   for(const item of raw.split(';')){
     const [name,...value]=item.trim().split('=')
-    if(name==='assetflow_session')return decodeURIComponent(value.join('='))
+    if(name==='assetflow_session'||name==='__Host-assetflow_session')try{return decodeURIComponent(value.join('='))}catch{return undefined}
   }
   return undefined
 }

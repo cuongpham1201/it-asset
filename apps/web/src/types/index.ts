@@ -94,7 +94,7 @@ export type UserRole = 'Admin' | 'IT' | 'HCNS'
 export interface AppUser {
   id: number | string
   username: string
-  password: string
+  password?: string
   name: string
   email: string
   role: UserRole

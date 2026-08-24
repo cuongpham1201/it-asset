@@ -60,7 +60,7 @@ export const seedBrandingSettings: BrandingSettings = {
 }
 
 export const seedUsers: AppUser[] = [
-  { id: 1, username: 'admin', password: 'admin123', name: 'Quản trị viên', email: 'admin@localhost', role: 'Admin', departmentScope: ['*'], mustChangePassword: true },
+  { id: 1, username: 'admin', name: 'Quản trị viên', email: 'admin@localhost', role: 'Admin', departmentScope: ['*'], mustChangePassword: true },
 ]
 
 export const seedTransactions: AssetTransaction[] = [

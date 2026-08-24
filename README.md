@@ -5,9 +5,8 @@
 [![Release](https://img.shields.io/github/v/release/duclamtk39/assetIT?sort=semver)](https://github.com/duclamtk39/assetIT/releases)
 
 AssetFlow là phần mềm mã nguồn mở, self-host dùng để quản lý vòng đời tài sản: nhập kho, cấp phát, cho mượn, thu hồi, điều chuyển, bảo trì và kiểm kê.
-<img width="1918" height="896" alt="image" src="https://github.com/user-attachments/assets/3c08f739-0f92-41ba-93b2-f5fdcfcedd4d" />
 
-> **Phiên bản hiện tại: v2.0.1 (UAT).** Frontend nghiệp vụ đã đọc/ghi qua REST API và PostgreSQL; demo seed được tắt mặc định. Hãy hoàn tất UAT, cấu hình HTTPS, backup và kiểm tra restore trước khi dùng dữ liệu thật.
+> Trạng thái hiện tại: **Internal UAT**. Có xác thực phía server, RBAC, audit log và PostgreSQL; chưa công bố là production-ready vì kiểm kê và một số nghiệp vụ phụ vẫn đang hoàn thiện. Chỉ triển khai trong mạng nội bộ/VPN và sao lưu định kỳ.
 
 ## Cài nhanh bằng Docker
 
@@ -17,18 +16,10 @@ Yêu cầu: Docker Engine hoặc Docker Desktop và Docker Compose v2.
 git clone https://github.com/duclamtk39/assetIT.git
 cd assetIT
 cp .env.example .env
-# đặt POSTGRES_PASSWORD mạnh; ASSETFLOW_VERSION mặc định là 2.0.1
+# đặt POSTGRES_PASSWORD, INITIAL_ADMIN_PASSWORD mạnh và ghim ASSETFLOW_VERSION
 docker compose pull
 docker compose up -d
 ```
-
-Nếu muốn build và thử trực tiếp từ source vừa clone, không cần chờ image trên GHCR:
-
-```bash
-docker compose -f compose.yaml -f compose.dev.yaml up -d --build
-```
-
-Sau khi workflow trên nhánh `main` publish image, có thể đặt `ASSETFLOW_VERSION=edge` trong `.env` để thử bản mới nhất. Khi dùng thật, nên chuyển sang tag release cố định.
 
 Windows PowerShell dùng `Copy-Item .env.example .env` thay cho lệnh `cp`. Mở `http://localhost:8080` và kiểm tra bằng:
 
@@ -37,46 +28,14 @@ docker compose ps
 docker compose logs --tail=100
 ```
 
-Đăng nhập lần đầu:
+Dữ liệu PostgreSQL nằm trong volume `assetflow_pgdata`; hồ sơ nằm trong `assetflow_documents`. Không chạy `docker compose down -v` nếu muốn giữ dữ liệu. Tài khoản cài mới là `admin`, dùng `INITIAL_ADMIN_PASSWORD` trong `.env` và bắt buộc đổi mật khẩu lần đầu.
 
-```text
-Tài khoản: admin
-Mật khẩu:  admin123
-```
-
-AssetFlow tự tạo tài khoản này trong PostgreSQL khi cơ sở dữ liệu chưa có người dùng `admin`; không cần chạy lệnh seed hay cấu hình thủ công. Hệ thống bắt buộc đặt mật khẩu mới ngay lần đăng nhập đầu tiên và không tự tạo lại/đặt lại mật khẩu ở các lần khởi động sau.
-
-Dữ liệu PostgreSQL nằm trong volume `assetflow_pgdata`; chứng từ nằm trong `assetflow_documents`. Không chạy `docker compose down -v` nếu muốn giữ dữ liệu. API tự chạy Prisma migration trước khi nhận request; migration lỗi thì API không khởi động.
-
-## Backup và restore
-
-Tạo backup đầy đủ database và chứng từ:
+Backup và restore có kiểm tra checksum:
 
 ```bash
-bash scripts/backup.sh
+./scripts/backup.sh
+./scripts/restore.sh backups/assetflow-YYYYMMDDTHHMMSSZ
 ```
-
-Windows PowerShell:
-
-```powershell
-.\scripts\backup.ps1
-```
-
-Restore yêu cầu xác nhận vì sẽ thay thế dữ liệu hiện tại:
-
-```bash
-bash scripts/restore.sh backups/assetflow-YYYYMMDDTHHMMSSZ
-```
-
-```powershell
-.\scripts\restore.ps1 -BackupPath .\backups\assetflow-YYYYMMDDTHHMMSSZ
-```
-
-Quy trình, lịch backup và kiểm tra sau restore nằm trong [hướng dẫn backup/restore](docs/BACKUP_RESTORE.md).
-
-## Đồng bộ người dùng
-
-Microsoft 365/Entra ID và LDAP/Active Directory được kết nối qua backend. Trước khi lưu secret, tạo `DIRECTORY_ENCRYPTION_KEY` theo [hướng dẫn đồng bộ danh tính](docs/DIRECTORY_SYNC.md). Tính năng đồng bộ hồ sơ, phòng ban, trạng thái và vai trò; chưa cung cấp SSO.
 
 ## Cấu trúc repository
 
@@ -103,26 +62,9 @@ npm ci
 npm run dev
 ```
 
-Các lệnh chính: `npm run dev:web`, `npm run dev:api`, `npm run build`, `npm run verify`. Chỉ bật dữ liệu mẫu ở local bằng `VITE_DEMO_MODE=true`.
+Các lệnh chính: `npm run dev:web`, `npm run dev:api`, `npm run build`, `npm run verify`. Chỉ bật dữ liệu mẫu ở local bằng `VITE_DEMO_MODE=true` và tự đặt `VITE_DEMO_ADMIN_PASSWORD`; image release không chứa mật khẩu demo.
 
-Dữ liệu mẫu của PostgreSQL cũng bị khóa mặc định. Chỉ seed một database dùng thử có thể xóa bỏ bằng cách đặt `ASSETFLOW_DEMO_SEED=true` rồi chạy `npm run db:seed`. Container production không chạy seed và frontend production được build với `VITE_DEMO_MODE=false`.
-
-Ở chế độ triển khai thật, sổ tài sản, lịch sử, danh mục, kho/vị trí, người nhận tài sản và các lệnh nhập kho/cấp phát/cho mượn/thu hồi/điều chuyển đều đọc ghi qua REST API vào PostgreSQL. `localStorage` chỉ được dùng trong demo mode; không phải nguồn dữ liệu nghiệp vụ.
-
-## Cập nhật UAT lên v2.0.1
-
-```bash
-cd assetIT
-git pull --ff-only
-# sửa ASSETFLOW_VERSION=2.0.1 trong .env nếu đang dùng edge hoặc phiên bản cũ
-bash scripts/backup.sh
-docker compose pull
-docker compose up -d
-docker compose ps
-docker compose logs api --tail=100
-```
-
-Nếu chỉ cần theo dõi image thử nghiệm mới nhất trên một môi trường có thể xóa bỏ:
+## Cập nhật
 
 ```bash
 git pull
@@ -137,18 +79,20 @@ Production phải dùng tag release cụ thể, backup và thử restore trướ
 - [Cấu trúc repository](docs/REPOSITORY_STRUCTURE.md)
 - [Kiến trúc](docs/ARCHITECTURE.md)
 - [Bảo mật và luồng dữ liệu](docs/SECURITY_AND_DATA_FLOW.md)
-- [Backup và restore](docs/BACKUP_RESTORE.md)
-- [Microsoft 365 và LDAP](docs/DIRECTORY_SYNC.md)
+- [Mức sẵn sàng production](docs/PRODUCTION_READINESS.md)
 - [Quy trình release](docs/RELEASE.md)
 - [Đóng góp](CONTRIBUTING.md) · [Báo cáo bảo mật](SECURITY.md)
 - [Giấy phép MIT](LICENSE)
 
-## ❤️ Support AssetFlow
+## Buy me a Coffee ❤️ Support AssetFlow
 
 AssetFlow miễn phí và có thể self-host. Nếu dự án hữu ích, bạn có thể hỗ trợ chi phí duy trì và phát triển.
-<img width="235" height="294" alt="image" src="https://github.com/user-attachments/assets/1187b400-08ba-4fb7-8194-dec25d63410a" />
+
+### Donate qua Vietcombank
+
+<img width="373" height="450" alt="AssetFlow donate QR" src="https://github.com/user-attachments/assets/a8ce277b-f365-4599-9961-34cc7d4531ec" />
 
 - Chủ tài khoản: **NGUYEN DUC LAM**
 - Số tài khoản: **059000212664**
 
-Xin cảm ơn !!!!
+Vui lòng kiểm tra đúng tên người nhận trước khi chuyển khoản. Thank you for supporting AssetFlow ❤️

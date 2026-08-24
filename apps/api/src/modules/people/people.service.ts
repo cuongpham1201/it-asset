@@ -3,7 +3,7 @@ import { AuthSource,Prisma } from '@prisma/client'
 import { PrismaService } from '../../database/prisma.service'
 import { CreatePersonDto,ListPeopleDto,UpdatePersonDto } from './people.dto'
 
-type Actor={id:string;role:string}
+type Actor={id:string;role:string;departmentId?:string|null}
 @Injectable()
 export class PeopleService{
   constructor(private readonly db:PrismaService){}
@@ -16,8 +16,9 @@ export class PeopleService{
     if(body.linkedUserId&&!await this.db.user.findUnique({where:{id:body.linkedUserId}}))throw new BadRequestException('Tài khoản liên kết không tồn tại')
   }
   private conflict(error:any):never{if(error?.code==='P2002')throw new ConflictException('Mã nhân viên, email hoặc tài khoản liên kết đã tồn tại trong danh bạ');throw error}
-  async list(query:ListPeopleDto,activeOnly=false){
-    const where:Prisma.PersonWhereInput={departmentId:query.departmentId,status:activeOnly?'ACTIVE':query.status,...(query.search?{OR:[{fullName:{contains:query.search,mode:'insensitive'}},{employeeCode:{contains:query.search,mode:'insensitive'}},{email:{contains:query.search,mode:'insensitive'}},{department:{name:{contains:query.search,mode:'insensitive'}}}]}:{})}
+  async list(query:ListPeopleDto,activeOnly=false,actor?:Actor){
+    const departmentId=actor?.role==='HCNS'?actor.departmentId||'__no_department_scope__':query.departmentId
+    const where:Prisma.PersonWhereInput={departmentId,status:activeOnly?'ACTIVE':query.status,...(query.search?{OR:[{fullName:{contains:query.search,mode:'insensitive'}},{employeeCode:{contains:query.search,mode:'insensitive'}},{email:{contains:query.search,mode:'insensitive'}},{department:{name:{contains:query.search,mode:'insensitive'}}}]}:{})}
     const [items,total]=await this.db.$transaction([this.db.person.findMany({where,select:this.select,orderBy:{fullName:'asc'},skip:(query.page-1)*query.limit,take:query.limit}),this.db.person.count({where})])
     return {items,total,page:query.page,limit:query.limit}
   }

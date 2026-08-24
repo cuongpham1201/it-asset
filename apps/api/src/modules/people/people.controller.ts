@@ -3,11 +3,11 @@ import { ApiTags } from '@nestjs/swagger'
 import type { Request } from 'express'
 import { CreatePersonDto,ListPeopleDto,UpdatePersonDto } from './people.dto'
 import { PeopleService } from './people.service'
-type AuthRequest=Request&{authUser:{id:string;role:string}}
+type AuthRequest=Request&{authUser:{id:string;role:string;departmentId:string|null}}
 
 @ApiTags('People directory')
 @Controller('people')
-export class PeopleLookupController{constructor(private readonly people:PeopleService){}@Get() list(@Query() query:ListPeopleDto){return this.people.list(query,true)}}
+export class PeopleLookupController{constructor(private readonly people:PeopleService){}@Get() list(@Query() query:ListPeopleDto,@Req() req:AuthRequest){return this.people.list(query,true,req.authUser)}}
 
 @ApiTags('People management')
 @Controller('admin/people')

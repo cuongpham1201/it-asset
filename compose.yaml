@@ -35,9 +35,11 @@ services:
       CORS_ORIGIN: ${APP_URL:-http://localhost:8080}
       COOKIE_SECURE: "false"
       SESSION_TTL_HOURS: ${SESSION_TTL_HOURS:-12}
+      INITIAL_ADMIN_PASSWORD: ${INITIAL_ADMIN_PASSWORD:-}
       TZ: ${TZ:-Asia/Ho_Chi_Minh}
       DIRECTORY_ENCRYPTION_KEY: ${DIRECTORY_ENCRYPTION_KEY:-}
       ALLOW_INSECURE_LDAP: "false"
+      ENABLE_SWAGGER: "false"
       DATABASE_HOST: postgres
       DATABASE_PORT: 5432
       DATABASE_NAME: ${POSTGRES_DB:-assetflow}
