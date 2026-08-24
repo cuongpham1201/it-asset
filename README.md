@@ -6,20 +6,15 @@
 
 AssetFlow là phần mềm self-hosted quản lý vòng đời tài sản: nhập kho, cấp phát, cho mượn, thu hồi, điều chuyển, kiểm kê, bảo trì, lịch sử và Barcode/QR.
 
-> **Trạng thái:** phù hợp triển khai UAT/pilot nội bộ có kiểm soát. Chỉ go-live sau khi doanh nghiệp hoàn thành checklist trong [Production readiness](docs/PRODUCTION_READINESS.md).
+> Phiên bản hiện tại phù hợp cho UAT/pilot nội bộ có kiểm soát. Trước khi go-live chính thức, doanh nghiệp cần hoàn thành [Production Readiness Checklist](docs/PRODUCTION_READINESS.md).
 
-## Triển khai trên server mới
+## Cài nhanh bằng Docker
 
-### 1. Chuẩn bị
+Máy chủ chỉ cần Linux, Git, Docker Engine và Docker Compose v2. Không cần cài Node.js hoặc PostgreSQL trực tiếp.
 
-- Linux 64-bit có Docker Engine và Docker Compose v2.
-- Git, OpenSSL và tối thiểu 4 GB RAM, 2 CPU, 20 GB dung lượng trống.
-- IP LAN tĩnh hoặc DHCP reservation, ví dụ `192.168.50.15`.
-- Cho phép TCP `80` từ mạng nội bộ. Khi chuyển sang domain/HTTPS, mở thêm `443`.
-- Không mở PostgreSQL ra ngoài Docker.
-- Hai package GHCR phải ở chế độ public; nếu đang private, chạy `docker login ghcr.io` trước khi pull.
+Khuyến nghị tối thiểu: 2 CPU, 4 GB RAM, 20 GB ổ đĩa trống và một IP LAN cố định.
 
-Kiểm tra:
+### 1. Kiểm tra máy chủ
 
 ```bash
 docker --version
@@ -28,7 +23,9 @@ git --version
 openssl version
 ```
 
-### 2. Tải cấu hình và tạo secret
+Nếu một trong các lệnh chưa tồn tại, hãy cài Docker Engine, Docker Compose plugin, Git và OpenSSL bằng trình quản lý gói của hệ điều hành.
+
+### 2. Tải AssetFlow
 
 ```bash
 sudo mkdir -p /opt
@@ -40,24 +37,20 @@ chmod +x init.sh ../../../scripts/*.sh
 ./init.sh
 ```
 
-`init.sh` tạo `.env` và các secret ngẫu nhiên với quyền truy cập hạn chế. Không commit hoặc gửi các file trong `secrets/` qua chat/email.
+Lệnh `init.sh` tự tạo `.env` và các mật khẩu ngẫu nhiên trong thư mục `secrets/`. Không commit, gửi qua chat hoặc email các file này.
 
-Nếu server đã chạy `init.sh` từ phiên bản cũ, sửa quyền secret một lần trước khi khởi động lại:
+### 3. Cấu hình địa chỉ truy cập
+
+Mở file cấu hình:
 
 ```bash
-cd /opt/assetIT/infra/docker/production
-chmod 700 secrets
-chmod 644 secrets/*.txt
+nano /opt/assetIT/infra/docker/production/.env
 ```
 
-### 3. Cấu hình IP nội bộ và phiên bản
-
-Mở `/opt/assetIT/infra/docker/production/.env` và sửa tối thiểu:
+Với server nội bộ có IP `192.168.50.15`, giữ hoặc sửa các giá trị sau:
 
 ```env
 REGISTRY_PREFIX=ghcr.io/duclamtk39
-
-# UAT dùng edge để nhận bản mới nhất từ main.
 ASSETFLOW_VERSION=edge
 
 APP_DOMAIN=http://192.168.50.15
@@ -66,15 +59,17 @@ COOKIE_SECURE=false
 TZ=Asia/Ho_Chi_Minh
 ```
 
-`edge` chỉ dùng cho UAT/pilot. Môi trường vận hành thật phải ghim tag release bất biến, ví dụ `ASSETFLOW_VERSION=2.2.0`, sau khi tag đó đã được phát hành trên GitHub/GHCR.
+Thay `192.168.50.15` bằng IP thật của server. Tag `edge` luôn nhận bản mới nhất từ nhánh `main`, phù hợp UAT. Môi trường vận hành ổn định nên ghim một tag release cụ thể, ví dụ `2.2.0`.
 
-Khi có domain, đổi sang HTTPS và bật cookie bảo mật:
+Nếu có domain và HTTPS:
 
 ```env
 APP_DOMAIN=assets.company.vn
 APP_URL=https://assets.company.vn
 COOKIE_SECURE=true
 ```
+
+Caddy sẽ tự xin chứng chỉ TLS khi DNS trỏ đúng về server và cổng `80/443` được phép truy cập.
 
 ### 4. Khởi động
 
@@ -84,60 +79,130 @@ docker compose config --quiet
 docker compose pull
 docker compose up -d
 docker compose ps
-docker compose logs --tail=100 migrate api web proxy
 ```
 
-Cấu hình HTTP-IP không yêu cầu chứng chỉ TLS và chỉ phù hợp LAN/VPN tin cậy. Khi chuyển sang domain, Caddy tự cấp chứng chỉ TLS nếu DNS hợp lệ và server nhận được kết nối trên `80/443`.
-
-Kiểm tra readiness:
+Kiểm tra API, thay IP nếu cần:
 
 ```bash
 curl -fsS http://192.168.50.15/api/v1/health/ready
 ```
 
-Đăng nhập lần đầu:
+Sau đó mở:
+
+```text
+http://192.168.50.15
+```
+
+### 5. Đăng nhập lần đầu
+
+Tên đăng nhập mặc định:
+
+```text
+admin
+```
+
+Xem mật khẩu khởi tạo:
 
 ```bash
 cat /opt/assetIT/infra/docker/production/secrets/initial_admin_password.txt
 ```
 
-- Tên đăng nhập: `admin`
-- Mật khẩu: giá trị vừa hiển thị
-- Hệ thống bắt buộc đổi mật khẩu ở lần đăng nhập đầu tiên.
+Hệ thống bắt buộc đổi mật khẩu ngay lần đăng nhập đầu tiên. Sau khi đăng nhập, người dùng có thể tiếp tục đổi mật khẩu tại khu vực hồ sơ ở cuối sidebar.
 
-## Cập nhật phiên bản
+Production không tự tạo dữ liệu demo.
 
-Chạy từ thư mục gốc repository. Luôn backup trước khi pull image/migration mới:
+## Cập nhật lên bản mới nhất
+
+Chỉ cập nhật sau khi GitHub Actions của nhánh `main` đã hoàn tất. Luôn backup trước khi tải image và chạy migration mới:
 
 ```bash
 cd /opt/assetIT
-ASSETFLOW_COMPOSE_FILE=infra/docker/production/compose.yaml ASSETFLOW_DB_SERVICE=db ./scripts/backup.sh
+
+ASSETFLOW_COMPOSE_FILE=infra/docker/production/compose.yaml \
+ASSETFLOW_DB_SERVICE=db \
+./scripts/backup.sh
+
 git pull --ff-only origin main
+
 cd infra/docker/production
 docker compose pull
-docker compose up -d
+docker compose up -d --remove-orphans
 docker compose ps
 curl -fsS http://192.168.50.15/api/v1/health/ready
 ```
 
-`git pull` chỉ cập nhật cấu hình; `docker compose pull` mới tải image mới. Container `migrate` phải hoàn tất thành công trước khi API được khởi động.
+`git pull` cập nhật cấu hình triển khai; `docker compose pull` tải image mới. Container `migrate` phải chạy thành công trước khi API khởi động.
 
-## Backup và khôi phục
+Kiểm tra commit đang có trong repository:
 
 ```bash
 cd /opt/assetIT
-
-# Tạo backup PostgreSQL và hồ sơ đính kèm
-ASSETFLOW_COMPOSE_FILE=infra/docker/production/compose.yaml ASSETFLOW_DB_SERVICE=db ./scripts/backup.sh
-
-# Thử phục hồi trên PostgreSQL tạm, không chạm dữ liệu đang chạy
-./scripts/dr-drill.sh backups/assetflow-YYYYMMDDTHHMMSSZ
-
-# Restore thật: thay thế dữ liệu hiện tại và yêu cầu xác nhận
-ASSETFLOW_COMPOSE_FILE=infra/docker/production/compose.yaml ASSETFLOW_DB_SERVICE=db ./scripts/restore.sh backups/assetflow-YYYYMMDDTHHMMSSZ
+git log -1 --oneline
 ```
 
-Sao lưu thêm `.env`, `secrets/` và thư mục `backups/` sang nơi lưu trữ mã hóa ngoài server. Tuyệt đối không chạy `docker compose down -v`, vì `-v` xóa volume database và hồ sơ.
+## Backup
+
+Backup gồm PostgreSQL và hồ sơ đính kèm:
+
+```bash
+cd /opt/assetIT
+ASSETFLOW_COMPOSE_FILE=infra/docker/production/compose.yaml \
+ASSETFLOW_DB_SERVICE=db \
+./scripts/backup.sh
+```
+
+File backup được tạo trong `/opt/assetIT/backups/assetflow-<thời-gian>/`.
+
+Ngoài backup trên, cần sao lưu mã hóa các thành phần sau sang một máy hoặc kho lưu trữ khác:
+
+- `/opt/assetIT/backups/`
+- `/opt/assetIT/infra/docker/production/.env`
+- `/opt/assetIT/infra/docker/production/secrets/`
+
+Không chạy `docker compose down -v`; tùy chọn `-v` sẽ xóa volume database và hồ sơ.
+
+## Khôi phục
+
+Thử khả năng khôi phục mà không tác động hệ thống đang chạy:
+
+```bash
+cd /opt/assetIT
+./scripts/dr-drill.sh backups/assetflow-YYYYMMDDTHHMMSSZ
+```
+
+Khôi phục thật sẽ thay thế dữ liệu hiện tại và yêu cầu nhập `RESTORE` để xác nhận:
+
+```bash
+cd /opt/assetIT
+ASSETFLOW_COMPOSE_FILE=infra/docker/production/compose.yaml \
+ASSETFLOW_DB_SERVICE=db \
+./scripts/restore.sh backups/assetflow-YYYYMMDDTHHMMSSZ
+```
+
+Sau khi restore, kiểm tra đăng nhập, số lượng tài sản, file đính kèm và lịch sử audit.
+
+## Xem log và xử lý lỗi
+
+```bash
+cd /opt/assetIT/infra/docker/production
+docker compose ps -a
+docker compose logs --tail=200 db migrate api web proxy
+docker compose config
+```
+
+Các lưu ý quan trọng:
+
+- Nếu `migrate` lỗi, API sẽ không khởi động để tránh chạy code mới trên schema cũ.
+- Nếu PostgreSQL báo `P1000`, mật khẩu trong volume cũ không khớp file secret hiện tại. Không xóa volume; khôi phục secret cũ hoặc thực hiện quy trình đổi mật khẩu database có kiểm soát.
+- Nếu container báo không đọc được secret, chạy `chmod 700 secrets && chmod 644 secrets/*.txt` trong thư mục production rồi khởi động lại.
+- Chỉ mở cổng `80/443`; PostgreSQL không được public ra LAN hoặc Internet.
+- HTTP qua IP chỉ phù hợp mạng LAN/VPN tin cậy. Dùng HTTPS trước khi truy cập qua Internet.
+
+Khởi động lại sau khi sửa cấu hình:
+
+```bash
+docker compose up -d --force-recreate
+```
 
 ## Monitoring
 
@@ -146,11 +211,11 @@ cd /opt/assetIT/infra/docker/production
 docker compose --profile monitoring up -d
 ```
 
-Prometheus và Alertmanager chỉ bind vào localhost tại `9090/9093`. Trước go-live phải cấu hình receiver email, Slack hoặc webhook thật và thử phát cảnh báo.
+Prometheus và Alertmanager chỉ bind localhost tại `9090/9093`. Trước go-live cần cấu hình receiver email, Slack hoặc webhook và thử cảnh báo thực tế.
 
 ## Microsoft 365 và LDAP
 
-Cấu hình tại **Cài đặt → Danh tính & người dùng**. Sau khi test kết nối và duyệt mapping, chạy acceptance test với tenant/domain thật:
+Cấu hình tại **Cài đặt → Danh tính & người dùng**. Test kết nối và kiểm tra mapping trước khi bật đồng bộ thật:
 
 ```bash
 cd /opt/assetIT
@@ -158,32 +223,52 @@ ASSETFLOW_URL=http://192.168.50.15 DIRECTORY_PROVIDER=M365 ./scripts/directory-l
 ASSETFLOW_URL=http://192.168.50.15 DIRECTORY_PROVIDER=LDAP ./scripts/directory-live-test.sh
 ```
 
-Chỉ thêm `DIRECTORY_RUN_SYNC=true` khi đã kiểm tra phạm vi người dùng, phòng ban và vai trò sẽ đồng bộ.
+Chỉ thêm `DIRECTORY_RUN_SYNC=true` sau khi đã kiểm tra đúng phạm vi người dùng, phòng ban và vai trò sẽ được đồng bộ. Không sử dụng LDAP không mã hóa ngoài môi trường thử nghiệm cô lập.
 
-## Xử lý nhanh khi không khởi động
+## Phát triển local
 
-```bash
-cd /opt/assetIT/infra/docker/production
-docker compose ps
-docker compose logs --tail=200 db migrate api web proxy
-docker compose config
-```
-
-Nếu PostgreSQL báo sai mật khẩu sau khi đổi `.env` hoặc secret, lưu ý volume cũ vẫn giữ tài khoản đã khởi tạo. Không xóa volume; hãy khôi phục đúng secret cũ hoặc thực hiện quy trình đổi mật khẩu database có kiểm soát.
-
-## Phát triển
+Yêu cầu Node.js 22 trở lên:
 
 ```bash
+git clone https://github.com/duclamtk39/assetIT.git
+cd assetIT
 npm ci
 npm run verify
 npm run dev
 ```
 
-Dữ liệu demo chỉ dành cho local khi bật `VITE_DEMO_MODE=true`; stack production không tự seed dữ liệu mẫu.
+Mở `http://127.0.0.1:5173`. Dữ liệu demo chỉ hoạt động khi chủ động đặt `VITE_DEMO_MODE=true`; không bật tùy chọn này trong production.
+
+## Kiến trúc triển khai
+
+```text
+Người dùng
+   │
+   ▼
+Caddy :80/:443
+   ├── Web (React)
+   └── API (NestJS)
+          │
+          └── PostgreSQL (mạng Docker nội bộ)
+```
+
+- `proxy`: điểm truy cập duy nhất từ bên ngoài.
+- `web`: giao diện React đã build.
+- `api`: REST API, xác thực, phân quyền và nghiệp vụ.
+- `migrate`: chạy migration bằng tài khoản database riêng rồi thoát.
+- `db`: PostgreSQL, không publish cổng ra host.
+- `postgres_data` và `document_data`: named volume giữ dữ liệu qua các lần cập nhật.
+
+## CI/CD và phát hành
+
+- Push/PR chạy build, test, audit dependency và kiểm tra Docker image.
+- Khi CI trên `main` thành công, workflow publish image `edge` lên GHCR.
+- GitHub Release phát hành image theo SemVer để ghim phiên bản ổn định.
+- Cập nhật server bằng `git pull`, `docker compose pull` và `docker compose up -d` như hướng dẫn phía trên.
 
 ## Tài liệu
 
-- [Chi tiết production stack](infra/docker/production/README.md)
+- [Production stack](infra/docker/production/README.md)
 - [Kiến trúc](docs/ARCHITECTURE.md)
 - [Production readiness](docs/PRODUCTION_READINESS.md)
 - [Bảo mật và kiểm thử directory](docs/SECURITY_TESTING.md)
@@ -201,4 +286,4 @@ AssetFlow miễn phí và có thể self-host. Nếu dự án hữu ích, bạn 
 - Chủ tài khoản: **NGUYEN DUC LAM**
 - Số tài khoản: **059000212664**
 
-Vui lòng kiểm tra đúng tên người nhận trước khi chuyển khoản. Thank you for supporting AssetFlow ❤️
+Vui lòng kiểm tra đúng tên người nhận trước khi chuyển khoản. Cảm ơn bạn đã ủng hộ AssetFlow ❤️
