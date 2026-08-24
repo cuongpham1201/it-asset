@@ -1,6 +1,8 @@
 import { BadRequestException,ConflictException,ForbiddenException,HttpException,HttpStatus,Injectable,NotFoundException,UnauthorizedException } from '@nestjs/common'
 import { AssetHistoryAction,DiscoveryStatus,Prisma } from '@prisma/client'
 import { createHash,randomBytes,randomUUID } from 'node:crypto'
+import { existsSync } from 'node:fs'
+import { join } from 'node:path'
 import { PrismaService } from '../../database/prisma.service'
 import { AgentInventoryDto,CreateAssetFromDiscoveryDto,CreateEnrollmentTokenDto,IgnoreDiscoveryDto,LinkDiscoveryDto,ListDiscoveryQuery } from './discovery.dto'
 import { classifyCandidates,inventoryFingerprint,sanitizeHardwareIdentifier } from './discovery.rules'
@@ -89,5 +91,6 @@ export class DiscoveryService{
     await tx.endpointAgent.update({where:{id:item.agentId},data:{linkedAssetId:asset.id}});await tx.discoveryInboxItem.update({where:{id},data:{status:'CREATED',suggestedAssetId:null,resolvedAssetId:asset.id,matchConfidence:100,conflictReason:null,resolutionNote:body.note?.trim()||null,resolvedBy:actor.id,resolvedAt:new Date()}});await tx.assetHistory.create({data:{assetId:asset.id,action:AssetHistoryAction.CREATED,toLocationId:warehouse.locationId,description:`Tạo từ Discovery Inbox; nhập ${warehouse.name}`,performedBy:actor.id}});await tx.auditLog.create({data:{userId:actor.id,action:'DISCOVERY_ASSET_CREATED',entityType:'DiscoveryInboxItem',entityId:id,newValues:{assetId:asset.id,assetTag:asset.assetTag,agentId:item.agentId} as Prisma.InputJsonValue}});return asset
   })}
 
-  downloads(){const base=(process.env.AGENT_DOWNLOAD_BASE_URL||'https://github.com/duclamtk39/assetIT/releases/latest/download').replace(/\/$/,'');return {windows:{label:'Windows x64',url:`${base}/assetflow-agent-windows-amd64.exe`},linuxAmd64:{label:'Linux x64',url:`${base}/assetflow-agent-linux-amd64`},linuxArm64:{label:'Linux ARM64',url:`${base}/assetflow-agent-linux-arm64`},checksums:`${base}/SHA256SUMS`,networkDiscovery:{available:false,status:'PLANNED'}}}
+  downloads(){const base='/api/v1/discovery/agent-files';return {windows:{label:'Windows x64',url:`${base}/assetflow-agent-windows-amd64.exe`},linuxAmd64:{label:'Linux x64',url:`${base}/assetflow-agent-linux-amd64`},linuxArm64:{label:'Linux ARM64',url:`${base}/assetflow-agent-linux-arm64`},checksums:`${base}/SHA256SUMS`,networkDiscovery:{available:false,status:'PLANNED'}}}
+  agentFile(filename:string,actor:Actor){this.assertOperator(actor);const allowed=new Set(['assetflow-agent-windows-amd64.exe','assetflow-agent-linux-amd64','assetflow-agent-linux-arm64','SHA256SUMS']);if(!allowed.has(filename))throw new NotFoundException('Không tìm thấy gói Endpoint Agent');const roots=[process.env.AGENT_DOWNLOAD_DIR,join(process.cwd(),'apps/api/agent-downloads'),join(process.cwd(),'apps/agent/dist')].filter(Boolean) as string[];const path=roots.map(root=>join(root,filename)).find(candidate=>existsSync(candidate));if(!path)throw new NotFoundException('Binary Agent chưa được đóng gói trong bản API này');return path}
 }

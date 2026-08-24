@@ -146,6 +146,7 @@ jobs:
         with:
           context: .
           file: apps/${{ matrix.component }}/Dockerfile
+          build-args: APP_VERSION=ci
           push: false
           load: true
           tags: assetflow-${{ matrix.component }}:ci

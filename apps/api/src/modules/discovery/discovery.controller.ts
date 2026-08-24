@@ -1,6 +1,6 @@
-import { Body,Controller,Delete,Get,Headers,Param,ParseUUIDPipe,Post,Query,Req } from '@nestjs/common'
+import { Body,Controller,Delete,Get,Headers,Param,ParseUUIDPipe,Post,Query,Req,Res } from '@nestjs/common'
 import { ApiTags } from '@nestjs/swagger'
-import type { Request } from 'express'
+import type { Request,Response } from 'express'
 import { Public } from '../../auth/public.decorator'
 import { AgentInventoryDto,CreateAssetFromDiscoveryDto,CreateEnrollmentTokenDto,IgnoreDiscoveryDto,LinkDiscoveryDto,ListDiscoveryQuery } from './discovery.dto'
 import { DiscoveryService } from './discovery.service'
@@ -27,6 +27,7 @@ export class DiscoveryController{
   @Post('inbox/:id/ignore') ignore(@Param('id',ParseUUIDPipe) id:string,@Body() body:IgnoreDiscoveryDto,@Req() req:AuthRequest){return this.discovery.ignore(id,body,req.authUser)}
   @Post('inbox/:id/reopen') reopen(@Param('id',ParseUUIDPipe) id:string,@Req() req:AuthRequest){return this.discovery.reopen(id,req.authUser)}
   @Get('agent-downloads') downloads(@Req() req:AuthRequest){this.discovery.assertOperator(req.authUser);return this.discovery.downloads()}
+  @Get('agent-files/:filename') agentFile(@Param('filename') filename:string,@Req() req:AuthRequest,@Res() response:Response){return response.download(this.discovery.agentFile(filename,req.authUser),filename)}
   @Get('enrollment-tokens') tokens(@Req() req:AuthRequest){return this.discovery.listEnrollmentTokens(req.authUser)}
   @Post('enrollment-tokens') createToken(@Body() body:CreateEnrollmentTokenDto,@Req() req:AuthRequest){return this.discovery.createEnrollmentToken(body,req.authUser)}
   @Delete('enrollment-tokens/:id') revokeToken(@Param('id',ParseUUIDPipe) id:string,@Req() req:AuthRequest){return this.discovery.revokeEnrollmentToken(id,req.authUser)}

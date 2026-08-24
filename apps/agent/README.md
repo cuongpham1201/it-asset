@@ -11,6 +11,8 @@ Agent thu thập inventory phần cứng trên Windows/Linux và gửi snapshot 
 
 Agent không đọc file người dùng, mật khẩu, nội dung trình duyệt hay nội dung tài liệu.
 
+Sidebar **Khám phá & Agent → Tải & cài Agent** tải binary đúng phiên bản được đóng gói trong image API self-hosted.
+
 ## Chạy kiểm tra cục bộ
 
 ```bash
