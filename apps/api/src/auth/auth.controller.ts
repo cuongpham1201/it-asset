@@ -12,6 +12,6 @@ export class AuthController{
   constructor(private readonly auth:AuthService){}
   @Public() @Post('login') @HttpCode(200) async login(@Body() body:LoginDto,@Req() request:Request,@Res({passthrough:true}) response:Response){const result=await this.auth.login(body.username,body.password,requestContext(request));response.cookie(COOKIE,result.token,{...cookieOptions,expires:result.expiresAt});return {user:result.user}}
   @Get('me') me(@Req() request:Request&{authUser:any}){return {user:this.auth.toClientUser(request.authUser)}}
-  @Post('change-password') @HttpCode(204) async changePassword(@Body() body:ChangePasswordDto,@Req() request:Request&{authUser:any},@Res({passthrough:true}) response:Response){await this.auth.changePassword(request.authUser.id,body.newPassword,requestContext(request));response.clearCookie(COOKIE,cookieOptions)}
+  @Post('change-password') @HttpCode(204) async changePassword(@Body() body:ChangePasswordDto,@Req() request:Request&{authUser:any},@Res({passthrough:true}) response:Response){await this.auth.changePassword(request.authUser.id,body.newPassword,body.currentPassword,requestContext(request));response.clearCookie(COOKIE,cookieOptions)}
   @Post('logout') @HttpCode(204) async logout(@Req() request:Request&{sessionToken?:string},@Res({passthrough:true}) response:Response){await this.auth.logout(request.sessionToken);response.clearCookie(COOKIE,cookieOptions)}
 }

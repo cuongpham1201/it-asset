@@ -1,4 +1,4 @@
-import { IsString,Length,MaxLength,MinLength } from 'class-validator'
+import { IsOptional,IsString,Length,MaxLength,MinLength } from 'class-validator'
 
 export class LoginDto{
   @IsString()
@@ -11,6 +11,11 @@ export class LoginDto{
 }
 
 export class ChangePasswordDto{
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  currentPassword?:string
+
   @IsString()
   @MinLength(8)
   @MaxLength(200)

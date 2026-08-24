@@ -48,9 +48,11 @@ export class AuthService implements OnModuleInit{
     return {token,expiresAt,user:this.toClientUser(user)}
   }
   async authenticate(token?:string){if(!token)return null;const session=await this.prisma.authSession.findUnique({where:{tokenHash:this.tokenHash(token)},include:{user:true}});if(!session||session.revokedAt||session.expiresAt<=new Date()||session.user.status!=='ACTIVE')return null;return session.user}
-  async changePassword(userId:string,newPassword:string,context:RequestContext={}){
+  async changePassword(userId:string,newPassword:string,currentPassword?:string,context:RequestContext={}){
     if(!isPasswordPolicyValid(newPassword))throw new BadRequestException('Mật khẩu phải có ít nhất 8 ký tự, gồm chữ hoa, chữ thường, số và ký tự đặc biệt')
-    const user=await this.prisma.user.findUnique({where:{id:userId}});if(!user)throw new UnauthorizedException();if(user.passwordHash&&await verifyPassword(newPassword,user.passwordHash))throw new BadRequestException('Mật khẩu mới phải khác mật khẩu hiện tại')
+    const user=await this.prisma.user.findUnique({where:{id:userId}});if(!user)throw new UnauthorizedException()
+    if(!user.mustChangePassword&&(!currentPassword||!user.passwordHash||!await verifyPassword(currentPassword,user.passwordHash)))throw new UnauthorizedException('Mật khẩu hiện tại không đúng')
+    if(user.passwordHash&&await verifyPassword(newPassword,user.passwordHash))throw new BadRequestException('Mật khẩu mới phải khác mật khẩu hiện tại')
     const changedAt=new Date();await this.prisma.$transaction(async tx=>{await tx.user.update({where:{id:userId},data:{passwordHash:await hashPassword(newPassword),mustChangePassword:false,passwordChangedAt:changedAt}});await tx.authSession.updateMany({where:{userId,revokedAt:null},data:{revokedAt:changedAt}});await tx.auditLog.create({data:{userId,action:'PASSWORD_CHANGED',entityType:'Authentication',...this.contextData(context)}})})
   }
   async logout(token?:string){if(token)await this.prisma.authSession.updateMany({where:{tokenHash:this.tokenHash(token),revokedAt:null},data:{revokedAt:new Date()}})}
