@@ -1,5 +1,7 @@
 # Repository structure
 
+Endpoint inventory Windows/Linux nằm tại `apps/agent`. Agent chỉ gọi ingestion API, tuyệt đối không kết nối trực tiếp PostgreSQL; dữ liệu nhận được phải đi qua discovery inbox để IT xác nhận.
+
 ## Nguyên tắc
 
 - `apps/` chỉ chứa ứng dụng có thể build và chạy độc lập.

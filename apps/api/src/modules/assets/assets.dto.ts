@@ -26,6 +26,7 @@ export class CreateAssetDto{
   @IsString() @IsNotEmpty() @MaxLength(100) assetTag!:string
   @IsString() @IsNotEmpty() @MaxLength(200) name!:string
   @IsOptional() @IsString() @MaxLength(150) serialNumber?:string
+  @IsOptional() @IsString() @MaxLength(100) systemUuid?:string
   @IsString() @IsNotEmpty() @MaxLength(150) barcode!:string
   @IsUUID() categoryId!:string
   @IsOptional() @IsUUID() modelId?:string

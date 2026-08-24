@@ -1,0 +1,22 @@
+# syntax=docker/dockerfile:1.7
+FROM golang:1.23-alpine AS build
+
+ARG TARGETOS=linux
+ARG TARGETARCH=amd64
+ARG VERSION=development
+
+WORKDIR /src/apps/agent
+COPY apps/agent/go.mod ./
+COPY apps/agent/ ./
+
+RUN go test ./...
+RUN suffix=""; \
+    if [ "${TARGETOS}" = "windows" ]; then suffix=".exe"; fi; \
+    CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build \
+      -trimpath \
+      -ldflags="-s -w -X main.version=${VERSION}" \
+      -o "/out/assetflow-agent${suffix}" \
+      ./cmd/assetflow-agent
+
+FROM scratch AS artifact
+COPY --from=build /out/ /

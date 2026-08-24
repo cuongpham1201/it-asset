@@ -14,6 +14,39 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  agent-test-build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: apps/agent/go.mod
+          cache-dependency-path: apps/agent/go.mod
+      - name: Format check
+        working-directory: apps/agent
+        run: test -z "$(gofmt -l .)"
+      - name: Agent unit tests
+        working-directory: apps/agent
+        run: go test ./...
+      - name: Agent static analysis
+        working-directory: apps/agent
+        run: go vet ./...
+      - name: Build Windows and Linux agents
+        working-directory: apps/agent
+        shell: bash
+        run: |
+          mkdir -p dist
+          CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -trimpath -o dist/assetflow-agent-windows-amd64.exe ./cmd/assetflow-agent
+          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -o dist/assetflow-agent-linux-amd64 ./cmd/assetflow-agent
+          CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -trimpath -o dist/assetflow-agent-linux-arm64 ./cmd/assetflow-agent
+          sha256sum dist/* > dist/SHA256SUMS
+      - uses: actions/upload-artifact@v4
+        with:
+          name: assetflow-agent-ci
+          path: apps/agent/dist/
+          if-no-files-found: error
+
   test-and-build:
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -93,14 +126,14 @@ jobs:
           DATABASE_URL: postgresql://assetflow_migrator:migrator_ci_password@localhost:5432/assetflow
       - name: Verify runtime database role cannot perform DDL
         run: |
-          PGPASSWORD=runtime_ci_password psql -h localhost -U assetflow_runtime -d assetflow -c 'SELECT COUNT(*) FROM inventory_sessions; SELECT COUNT(*) FROM asset_import_batches;'
+          PGPASSWORD=runtime_ci_password psql -h localhost -U assetflow_runtime -d assetflow -c 'SELECT COUNT(*) FROM inventory_sessions; SELECT COUNT(*) FROM asset_import_batches; SELECT COUNT(*) FROM endpoint_agents; SELECT COUNT(*) FROM agent_inventory_snapshots; SELECT COUNT(*) FROM discovery_inbox_items;'
           if PGPASSWORD=runtime_ci_password psql -h localhost -U assetflow_runtime -d assetflow -c 'CREATE TABLE ddl_must_fail(id int)'; then
             echo 'Runtime role unexpectedly has DDL permission' >&2
             exit 1
           fi
 
   docker-build:
-    needs: [test-and-build, migration-smoke]
+    needs: [agent-test-build, test-and-build, migration-smoke]
     runs-on: ubuntu-latest
     strategy:
       matrix:

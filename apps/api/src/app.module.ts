@@ -17,6 +17,7 @@ import { VendorsModule } from './modules/vendors/vendors.module'
 import { InventoryModule } from './modules/inventory/inventory.module'
 import { AssetImportsModule } from './modules/asset-imports/asset-imports.module'
 import { ObservabilityModule } from './observability/observability.module'
+import { DiscoveryModule } from './modules/discovery/discovery.module'
 
-@Module({imports:[ConfigModule.forRoot({isGlobal:true}),DatabaseModule,ObservabilityModule,AuthModule,AssetsModule,LookupsModule,DirectoryModule,UsersModule,PeopleModule,CategoriesModule,LifecycleModule,SettingsModule,MasterDataModule,VendorsModule,InventoryModule,AssetImportsModule],controllers:[HealthController]})
+@Module({imports:[ConfigModule.forRoot({isGlobal:true}),DatabaseModule,ObservabilityModule,AuthModule,AssetsModule,LookupsModule,DirectoryModule,UsersModule,PeopleModule,CategoriesModule,LifecycleModule,SettingsModule,MasterDataModule,VendorsModule,InventoryModule,AssetImportsModule,DiscoveryModule],controllers:[HealthController]})
 export class AppModule implements NestModule{configure(consumer:MiddlewareConsumer){consumer.apply(RequestLoggerMiddleware).forRoutes('*')}}

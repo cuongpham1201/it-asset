@@ -23,6 +23,7 @@ import { env } from './config/env'
 import { useRuntimeI18n } from './i18n/runtime'
 import { findAssetByScannedValue } from './features/scanner/scan-lookup'
 import { countDashboardLabels, dashboardLabelsEqual } from './features/dashboard/dashboard-metrics'
+import { DiscoveryCenter } from './features/discovery/DiscoveryCenter'
 
 const money = (value: number) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(value)
 const compactMoney = (value: number) => value >= 1_000_000_000 ? `${(value / 1_000_000_000).toFixed(1)} tỷ` : `${Math.round(value / 1_000_000)} tr`
@@ -38,6 +39,7 @@ const englishLabels:Record<string,string>={
   'Tổng quan':'Overview','Sổ tài sản':'Asset register','Cấp phát & Thu hồi':'Issue & Return','Điều chuyển':'Transfer','Nhập kho':'Stock receipt','Kho & Vị trí':'Warehouses & Locations','Kiểm kê':'Inventory audit','Mua sắm & PO':'Purchasing & PO','Nhà cung cấp':'Suppliers','Bảo trì & Sự cố':'Maintenance & Incidents','Xuất kho':'Stock issue','Báo cáo':'Reports','Lịch sử / Audit':'History / Audit','Barcode / QR':'Barcode / QR','Cài đặt':'Settings','Trợ giúp':'Help','Chi tiết tài sản':'Asset details',
   'TÀI SẢN':'ASSETS','NGHIỆP VỤ':'OPERATIONS','BÁO CÁO':'REPORTING','CÔNG CỤ':'TOOLS',
   'Đang sử dụng':'In use','Sẵn sàng':'Available','Bảo trì':'Maintenance','Hỏng':'Broken','Cho mượn':'On loan','Quá hạn':'Overdue',
+  'Khám phá & Agent':'Discovery & Agent',
 }
 const uiLabel=(value:string,language:string)=>language==='en-US'?(englishLabels[value]||value):value
 const normalizeSearchText=(value:unknown)=>String(value??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/đ/g,'d').replace(/Đ/g,'D').toLowerCase().replace(/[^a-z0-9@.]+/g,' ').trim()
@@ -152,7 +154,7 @@ const navSections: Array<{title:string;items:Array<{label:string;icon:typeof Box
   {title:'TÀI SẢN',items:[{label:'Sổ tài sản',icon:Box},{label:'Cấp phát & Thu hồi',icon:UserPlus},{label:'Nhập kho',icon:ArrowDownRight},{label:'Kho & Vị trí',icon:Warehouse},{label:'Kiểm kê',icon:ClipboardCheck}]},
   {title:'NGHIỆP VỤ',items:[{label:'Mua sắm & PO',icon:ShoppingCart},{label:'Nhà cung cấp',icon:Building2},{label:'Bảo trì & Sự cố',icon:Wrench,count:'5'},{label:'Xuất kho',icon:ArrowUpRight}]},
   {title:'BÁO CÁO',items:[{label:'Báo cáo',icon:BarChart3},{label:'Lịch sử / Audit',icon:History}]},
-  {title:'CÔNG CỤ',items:[{label:'Barcode / QR',icon:ScanLine}]},
+  {title:'CÔNG CỤ',items:[{label:'Barcode / QR',icon:ScanLine},{label:'Khám phá & Agent',icon:Wifi}]},
 ]
 
 const statusClass: Record<AssetStatus, string> = {
@@ -208,7 +210,7 @@ function Sidebar({ page, setPage, open, close, user, logout, openChangePassword,
     {open && <div className="overlay" onClick={close} />}
     <aside className={`sidebar ${open ? 'open' : ''}`}>
       <div className="brand"><div className="brand-mark">{branding.logoDataUrl?<img src={branding.logoDataUrl} alt="Logo"/>:<Box size={23} strokeWidth={2.3}/>}</div><div className="brand-copy"><b>{branding.appName}</b><small>{language==='en-US'?'ASSET MANAGEMENT SYSTEM':'HỆ THỐNG QUẢN LÝ TÀI SẢN'}</small></div></div>
-      <nav>{navSections.map(section=>{const items=user.role==='HCNS'?section.items.filter(item=>hcnsAllowed.includes(item.label)):section.items;return items.length?<div className="nav-section" key={section.title}><p className="nav-title">{uiLabel(section.title,language)}</p>{items.map(item=><button key={item.label} className={page===item.label?'active':''} onClick={()=>{setPage(item.label);close()}}><item.icon size={17}/><span>{uiLabel(item.label,language)}</span>{item.count&&<em>{item.count}</em>}</button>)}</div>:null})}</nav>
+      <nav>{navSections.map(section=>{const permitted=section.items.filter(item=>item.label!=='Khám phá & Agent'||['Admin','IT'].includes(user.role));const items=user.role==='HCNS'?permitted.filter(item=>hcnsAllowed.includes(item.label)):permitted;return items.length?<div className="nav-section" key={section.title}><p className="nav-title">{uiLabel(section.title,language)}</p>{items.map(item=><button key={item.label} className={page===item.label?'active':''} onClick={()=>{setPage(item.label);close()}}><item.icon size={17}/><span>{uiLabel(item.label,language)}</span>{item.count&&<em>{item.count}</em>}</button>)}</div>:null})}</nav>
       <div className="sidebar-bottom">
         {user.role==='Admin'&&<button className={['Cấu hình hệ thống','Tùy chỉnh thương hiệu','Cấu hình email'].includes(page) ? 'active' : ''} onClick={() => { setPage('Cấu hình hệ thống'); close() }}><Settings size={19} /><span>{uiLabel('Cài đặt',language)}</span></button>}
         <button><HelpCircle size={19} /><span>{uiLabel('Trợ giúp',language)}</span></button>
@@ -901,6 +903,7 @@ export default function App() {
   else if(page==='Kiểm kê') content=<InventoryManagement assets={scopedAssets} onScan={()=>openScanner('lookup')}/>
   else if(page==='Lịch sử / Audit') content=<TransactionHistory transactions={scopedTransactions}/>
   else if(page==='Barcode / QR'||page==='Nhập kho') content=<BarcodeCenter key={page} assets={scopedAssets} initialMode={page==='Nhập kho'?'manual':'lookup'} departmentOptions={departmentOptions} warehouseOptions={env.demoMode?siteOptions:referenceData.warehouses.map(item=>item.name)} onBarcode={setBarcodeAsset} onAssign={setAssignmentAsset}/>
+  else if(page==='Khám phá & Agent'&&['Admin','IT'].includes(currentUser.role)) content=<DiscoveryCenter role={currentUser.role} categories={referenceData.categories} warehouses={referenceData.warehouses} demoMode={env.demoMode} onAssetCreated={refreshServerData}/>
   else if(page==='Cấu hình hệ thống'&&isAdmin) content=<AdminSettings departments={departmentList} sites={siteList} assets={assets} regional={regional} branding={branding} email={emailSettings} onSaveRegional={saveRegionalSetting} onSaveBranding={saveBrandingSetting} onSaveEmail={saveEmailSetting} saveDepartment={saveDepartment} removeDepartment={removeDepartment} saveSite={saveSite} removeSite={removeSite}/>
   else if(page==='Tùy chỉnh thương hiệu'&&isAdmin) content=<BrandingConfiguration settings={branding} onSave={saveBrandingSetting}/>
   else if(page==='Cấu hình email'&&isAdmin) content=<EmailConfiguration settings={emailSettings} onSave={saveEmailSetting}/>

@@ -1,5 +1,7 @@
 # AssetFlow v2.2
 
+> Endpoint Agent MVP cho Windows/Linux đã có enrollment API, credential riêng theo máy, snapshot bất biến và Discovery Inbox. IT chọn liên kết tài sản, tạo mới, bỏ qua hoặc xử lý xung đột; Agent không tự ghi vào sổ tài sản. Network Discovery/SNMP được để ở giai đoạn sau. Xem [thiết kế Endpoint Agent](docs/ENDPOINT_AGENT.md) và [hướng dẫn Agent](apps/agent/README.md).
+
 [![CI](https://github.com/duclamtk39/assetIT/actions/workflows/ci.yml/badge.svg)](https://github.com/duclamtk39/assetIT/actions/workflows/ci.yml)
 [![Docker](https://img.shields.io/badge/Docker-GHCR-2496ED?logo=docker&logoColor=white)](https://github.com/duclamtk39/assetIT/pkgs)
 [![License](https://img.shields.io/badge/License-MIT-green)](LICENSE)

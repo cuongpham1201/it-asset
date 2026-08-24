@@ -5,6 +5,7 @@ export const pageRoutes: Record<string,string> = {
   'Kiểm kê':'/inventory',
   'Lịch sử / Audit':'/audit',
   'Barcode / QR':'/barcode',
+  'Khám phá & Agent':'/discovery',
   'Nhập kho':'/warehouse/receipts',
   'Xuất kho':'/warehouse/issues',
   'Kho & Vị trí':'/warehouses',

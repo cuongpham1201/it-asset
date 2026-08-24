@@ -88,6 +88,18 @@ enum AssetImportRowStatus {
   COMMITTED
   ROLLED_BACK
 }
+enum DiscoverySource {
+  AGENT
+  NETWORK_SNMP
+}
+enum DiscoveryStatus {
+  PENDING
+  MATCHED
+  CONFLICT
+  LINKED
+  CREATED
+  IGNORED
+}
 model Department {
   id String @id @default(uuid()) @db.Uuid
   code String @unique @db.VarChar(50)
@@ -131,6 +143,8 @@ model User {
   inventorySessions InventorySession[] @relation("InventoryCreator")
   inventoryScans InventoryItem[] @relation("InventoryScanner")
   importBatches AssetImportBatch[] @relation("ImportCreator")
+  agentEnrollmentTokens AgentEnrollmentToken[] @relation("AgentTokenCreator")
+  discoveryResolutions DiscoveryInboxItem[] @relation("DiscoveryResolver")
   authSessions AuthSession[]
   person Person?
   createdAt DateTime @default(now())
@@ -327,6 +341,7 @@ model Asset {
   assetTag String @unique @db.VarChar(100)
   name String @db.VarChar(200)
   serialNumber String? @unique @db.VarChar(150)
+  systemUuid String? @unique @db.VarChar(100)
   barcode String @unique @db.VarChar(150)
   categoryId String @db.Uuid
   modelId String? @db.Uuid
@@ -365,11 +380,100 @@ model Asset {
   maintenanceRecords MaintenanceRecord[]
   inventoryItems InventoryItem[]
   importRows AssetImportRow[]
+  endpointAgents EndpointAgent[] @relation("AgentLinkedAsset")
+  suggestedDiscoveries DiscoveryInboxItem[] @relation("DiscoverySuggestedAsset")
+  resolvedDiscoveries DiscoveryInboxItem[] @relation("DiscoveryResolvedAsset")
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   @@index([serialNumber])
   @@index([categoryId, statusId, departmentId, locationId])
   @@map("assets")
+}
+
+model AgentEnrollmentToken {
+  id String @id @default(uuid()) @db.Uuid
+  name String @db.VarChar(150)
+  tokenHash String @unique @db.VarChar(64)
+  siteCode String? @db.VarChar(100)
+  expiresAt DateTime
+  maxEnrollments Int @default(100)
+  enrollmentCount Int @default(0)
+  lastUsedAt DateTime?
+  revokedAt DateTime?
+  createdBy String @db.Uuid
+  creator User @relation("AgentTokenCreator", fields: [createdBy], references: [id], onDelete: Restrict)
+  agents EndpointAgent[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@index([expiresAt, revokedAt])
+  @@map("agent_enrollment_tokens")
+}
+
+model EndpointAgent {
+  id String @id @default(uuid()) @db.Uuid
+  agentKey String @unique @db.VarChar(100)
+  credentialHash String @unique @db.VarChar(64)
+  enrollmentTokenId String @db.Uuid
+  fingerprint String @unique @db.VarChar(64)
+  hostname String @db.VarChar(255)
+  siteCode String? @db.VarChar(100)
+  agentVersion String @db.VarChar(50)
+  osFamily String @db.VarChar(30)
+  linkedAssetId String? @unique @db.Uuid
+  firstSeenAt DateTime @default(now())
+  lastSeenAt DateTime @default(now())
+  enrolledAt DateTime @default(now())
+  revokedAt DateTime?
+  enrollmentToken AgentEnrollmentToken @relation(fields: [enrollmentTokenId], references: [id], onDelete: Restrict)
+  linkedAsset Asset? @relation("AgentLinkedAsset", fields: [linkedAssetId], references: [id], onDelete: SetNull)
+  snapshots AgentInventorySnapshot[]
+  discoveryItem DiscoveryInboxItem?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@index([hostname, lastSeenAt])
+  @@map("endpoint_agents")
+}
+
+model AgentInventorySnapshot {
+  id String @id @default(uuid()) @db.Uuid
+  agentId String @db.Uuid
+  schemaVersion String @db.VarChar(20)
+  collectedAt DateTime
+  hostname String @db.VarChar(255)
+  serialNumber String? @db.VarChar(150)
+  systemUuid String? @db.VarChar(100)
+  primaryMac String? @db.VarChar(64)
+  payload Json
+  agent EndpointAgent @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  @@unique([agentId, collectedAt])
+  @@index([serialNumber])
+  @@index([primaryMac])
+  @@index([createdAt])
+  @@map("agent_inventory_snapshots")
+}
+
+model DiscoveryInboxItem {
+  id String @id @default(uuid()) @db.Uuid
+  source DiscoverySource @default(AGENT)
+  status DiscoveryStatus @default(PENDING)
+  agentId String @unique @db.Uuid
+  suggestedAssetId String? @db.Uuid
+  resolvedAssetId String? @db.Uuid
+  matchConfidence Int @default(0)
+  conflictReason String? @db.VarChar(1000)
+  resolutionNote String? @db.VarChar(2000)
+  resolvedBy String? @db.Uuid
+  resolvedAt DateTime?
+  lastObservedAt DateTime @default(now())
+  agent EndpointAgent @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  suggestedAsset Asset? @relation("DiscoverySuggestedAsset", fields: [suggestedAssetId], references: [id], onDelete: SetNull)
+  resolvedAsset Asset? @relation("DiscoveryResolvedAsset", fields: [resolvedAssetId], references: [id], onDelete: SetNull)
+  resolver User? @relation("DiscoveryResolver", fields: [resolvedBy], references: [id], onDelete: Restrict)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@index([status, lastObservedAt])
+  @@map("discovery_inbox_items")
 }
 model AssetAssignment {
   id String @id @default(uuid()) @db.Uuid
