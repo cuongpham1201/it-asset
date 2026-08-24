@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { classifyCandidates,inventoryFingerprint } from '../src/modules/discovery/discovery.rules'
+import { classifyCandidates,inventoryFingerprint,sanitizeHardwareIdentifier } from '../src/modules/discovery/discovery.rules'
 
 test('fingerprint matches the Agent normalization contract',()=>{
   const payload:any={device:{hostname:'PC-01',os:{family:'windows',arch:'amd64'},hardware:{system_uuid:' ABC ',serial_number:'SN-01',manufacturer:'Dell',model:'Latitude'},network_interfaces:[{mac_address:'BB'},{mac_address:'AA'}]}}
@@ -18,4 +18,10 @@ test('matching never resolves ambiguous candidates automatically',()=>{
 test('system UUID is the strongest discovery evidence',()=>{
   const result=classifyCandidates([{id:'asset-1',systemUuid:'UUID-01',serialNumber:null,macAddress:null}],{systemUuid:'uuid-01',serial:null,mac:null})
   assert.equal(result.confidence,99)
+})
+
+test('OEM placeholder identifiers are not used for matching',()=>{
+  assert.equal(sanitizeHardwareIdentifier(' Default string '),'')
+  assert.equal(sanitizeHardwareIdentifier('To Be Filled By O.E.M.'),'')
+  assert.equal(sanitizeHardwareIdentifier('SN-123'),'SN-123')
 })

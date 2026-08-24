@@ -9,12 +9,29 @@ import (
 	"github.com/duclamtk39/assetIT/apps/agent/internal/model"
 )
 
+var invalidHardwareIdentifiers = map[string]struct{}{
+	"default string": {}, "to be filled by o.e.m.": {}, "to be filled by oem": {},
+	"system serial number": {}, "unknown": {}, "none": {}, "not specified": {},
+	"n/a": {}, "na": {}, "0": {}, "00000000-0000-0000-0000-000000000000": {},
+	"ffffffff-ffff-ffff-ffff-ffffffffffff": {},
+}
+
+// SanitizeHardwareIdentifier removes well-known OEM placeholders that would
+// otherwise create false matches across unrelated devices.
+func SanitizeHardwareIdentifier(value string) string {
+	trimmed := strings.TrimSpace(value)
+	if _, invalid := invalidHardwareIdentifiers[strings.ToLower(trimmed)]; invalid {
+		return ""
+	}
+	return trimmed
+}
+
 // Fingerprint derives a stable, non-secret identifier from hardware evidence.
 // It is used for reconciliation only; the server must not treat it as authentication.
 func Fingerprint(device model.Device) string {
 	parts := []string{
-		normalize(device.Hardware.SystemUUID),
-		normalize(device.Hardware.SerialNumber),
+		normalize(SanitizeHardwareIdentifier(device.Hardware.SystemUUID)),
+		normalize(SanitizeHardwareIdentifier(device.Hardware.SerialNumber)),
 		normalize(device.Hardware.Manufacturer),
 		normalize(device.Hardware.Model),
 	}

@@ -6,10 +6,12 @@ type MatchEvidence={systemUuid:string|null;serial:string|null;mac:string|null}
 export type MatchDecision={status:'PENDING'|'MATCHED'|'CONFLICT';suggestedAssetId:string|null;confidence:number;reason:string|null}
 
 const normalize=(value?:string|null)=>value?.trim().toLowerCase()||''
+const invalidHardwareIdentifiers=new Set(['default string','to be filled by o.e.m.','to be filled by oem','system serial number','unknown','none','not specified','n/a','na','0','00000000-0000-0000-0000-000000000000','ffffffff-ffff-ffff-ffff-ffffffffffff'])
+export const sanitizeHardwareIdentifier=(value?:string|null)=>{const trimmed=value?.trim()||'';return invalidHardwareIdentifiers.has(trimmed.toLowerCase())?'':trimmed}
 
 export function inventoryFingerprint(body:AgentInventoryDto){
   const hardware=body.device.hardware
-  const parts=[normalize(hardware.system_uuid),normalize(hardware.serial_number),normalize(hardware.manufacturer),normalize(hardware.model)]
+  const parts=[normalize(sanitizeHardwareIdentifier(hardware.system_uuid)),normalize(sanitizeHardwareIdentifier(hardware.serial_number)),normalize(hardware.manufacturer),normalize(hardware.model)]
   const macs=body.device.network_interfaces.map(value=>normalize(value.mac_address)).filter(Boolean).sort()
   parts.push(...macs)
   if(parts.join('')==='')parts.push(normalize(body.device.hostname),normalize(body.device.os.family),normalize(body.device.os.arch))

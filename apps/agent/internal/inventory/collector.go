@@ -27,6 +27,8 @@ func (Collector) Collect(ctx context.Context, agentVersion, siteCode string) (mo
 	}
 	device.OS.Arch = runtime.GOARCH
 	device.Hardware.LogicalCPUs = runtime.NumCPU()
+	device.Hardware.SerialNumber = identity.SanitizeHardwareIdentifier(device.Hardware.SerialNumber)
+	device.Hardware.SystemUUID = identity.SanitizeHardwareIdentifier(device.Hardware.SystemUUID)
 	device.Interfaces = collectInterfaces()
 	device.Fingerprint = identity.Fingerprint(device)
 	return model.InventoryEnvelope{
