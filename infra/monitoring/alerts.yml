@@ -1,0 +1,21 @@
+groups:
+  - name: assetflow
+    rules:
+      - alert: AssetFlowApiDown
+        expr: up{job="assetflow-api"} == 0
+        for: 2m
+        labels: {severity: critical}
+        annotations:
+          summary: "AssetFlow API is unreachable"
+      - alert: AssetFlowDatabaseUnavailable
+        expr: assetflow_database_ready == 0
+        for: 1m
+        labels: {severity: critical}
+        annotations:
+          summary: "AssetFlow cannot query PostgreSQL"
+      - alert: AssetFlowHighServerErrorRate
+        expr: sum(rate(assetflow_http_requests_total{status=~"5.."}[5m])) / clamp_min(sum(rate(assetflow_http_requests_total[5m])), 0.001) > 0.05
+        for: 10m
+        labels: {severity: warning}
+        annotations:
+          summary: "AssetFlow 5xx rate is above 5%"

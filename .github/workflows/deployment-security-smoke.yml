@@ -1,0 +1,23 @@
+name: Deployment security smoke
+
+on:
+  workflow_dispatch:
+    inputs:
+      target_url:
+        description: HTTPS AssetFlow URL reachable from GitHub-hosted runners
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  baseline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify production headers and unauthenticated access controls
+        env:
+          TARGET_URL: ${{ inputs.target_url }}
+        run: ./scripts/security-smoke.sh "$TARGET_URL"

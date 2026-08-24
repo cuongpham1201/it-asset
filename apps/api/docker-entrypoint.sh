@@ -18,8 +18,15 @@ if [ -z "${DATABASE_URL:-}" ]; then
   exit 1
 fi
 
-echo "AssetFlow: applying forward-only Prisma migrations"
-node /app/node_modules/prisma/build/index.js migrate deploy --schema /app/apps/api/prisma/schema.prisma
+if [ "${RUN_DATABASE_MIGRATIONS:-true}" = "true" ] || [ "${RUN_DATABASE_MIGRATIONS:-true}" = "only" ]; then
+  echo "AssetFlow: applying forward-only Prisma migrations"
+  node /app/node_modules/prisma/build/index.js migrate deploy --schema /app/apps/api/prisma/schema.prisma
+fi
+
+if [ "${RUN_DATABASE_MIGRATIONS:-true}" = "only" ]; then
+  echo "AssetFlow: migrations completed"
+  exit 0
+fi
 
 echo "AssetFlow: starting API"
 exec node /app/apps/api/dist/main.js

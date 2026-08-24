@@ -1,0 +1,10 @@
+route:
+  receiver: operations-ui
+  group_by: [alertname]
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 4h
+receivers:
+  - name: operations-ui
+# Alerts are retained in Alertmanager UI. Add an approved email, Slack or webhook
+# receiver here before production go-live; never commit notification credentials.

@@ -52,17 +52,15 @@ jobs:
         image: postgres:16-alpine
         env:
           POSTGRES_DB: assetflow
-          POSTGRES_USER: assetflow
-          POSTGRES_PASSWORD: assetflow_ci_password
+          POSTGRES_USER: assetflow_bootstrap
+          POSTGRES_PASSWORD: bootstrap_ci_password
         ports:
           - 5432:5432
         options: >-
-          --health-cmd "pg_isready -U assetflow -d assetflow"
+          --health-cmd "pg_isready -U assetflow_bootstrap -d assetflow"
           --health-interval 5s
           --health-timeout 3s
           --health-retries 20
-    env:
-      DATABASE_URL: postgresql://assetflow:assetflow_ci_password@localhost:5432/assetflow
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -70,10 +68,36 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      - name: Initialize separate migration and runtime database roles
+        env:
+          PGPASSWORD: bootstrap_ci_password
+        run: |
+          psql -h localhost -U assetflow_bootstrap -d assetflow -v ON_ERROR_STOP=1 <<'SQL'
+          CREATE ROLE assetflow_migrator LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION PASSWORD 'migrator_ci_password';
+          CREATE ROLE assetflow_runtime LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION PASSWORD 'runtime_ci_password';
+          ALTER DATABASE assetflow OWNER TO assetflow_migrator;
+          ALTER SCHEMA public OWNER TO assetflow_migrator;
+          REVOKE CREATE ON SCHEMA public FROM PUBLIC;
+          GRANT CONNECT ON DATABASE assetflow TO assetflow_runtime;
+          GRANT USAGE ON SCHEMA public TO assetflow_runtime;
+          ALTER DEFAULT PRIVILEGES FOR ROLE assetflow_migrator IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO assetflow_runtime;
+          ALTER DEFAULT PRIVILEGES FOR ROLE assetflow_migrator IN SCHEMA public GRANT USAGE, SELECT ON SEQUENCES TO assetflow_runtime;
+          SQL
       - name: Apply all migrations on a clean PostgreSQL database
         run: npm run db:migrate
+        env:
+          DATABASE_URL: postgresql://assetflow_migrator:migrator_ci_password@localhost:5432/assetflow
       - name: Verify migration state
         run: npx prisma migrate status --schema apps/api/prisma/schema.prisma
+        env:
+          DATABASE_URL: postgresql://assetflow_migrator:migrator_ci_password@localhost:5432/assetflow
+      - name: Verify runtime database role cannot perform DDL
+        run: |
+          PGPASSWORD=runtime_ci_password psql -h localhost -U assetflow_runtime -d assetflow -c 'SELECT COUNT(*) FROM inventory_sessions; SELECT COUNT(*) FROM asset_import_batches;'
+          if PGPASSWORD=runtime_ci_password psql -h localhost -U assetflow_runtime -d assetflow -c 'CREATE TABLE ddl_must_fail(id int)'; then
+            echo 'Runtime role unexpectedly has DDL permission' >&2
+            exit 1
+          fi
 
   docker-build:
     needs: [test-and-build, migration-smoke]

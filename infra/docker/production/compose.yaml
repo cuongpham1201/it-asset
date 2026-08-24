@@ -12,12 +12,17 @@ services:
     restart: unless-stopped
     environment:
       POSTGRES_DB: ${POSTGRES_DB}
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
+      POSTGRES_USER: ${POSTGRES_BOOTSTRAP_USER:-assetflow_bootstrap}
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_bootstrap_password
+      POSTGRES_MIGRATION_USER: ${POSTGRES_MIGRATION_USER:-assetflow_migrator}
+      POSTGRES_RUNTIME_USER: ${POSTGRES_RUNTIME_USER:-assetflow_runtime}
     secrets:
-      - postgres_password
+      - postgres_bootstrap_password
+      - postgres_migration_password
+      - postgres_runtime_password
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ./postgres/init:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
       interval: 10s
@@ -27,11 +32,33 @@ services:
     security_opt: ["no-new-privileges:true"]
     logging: *default-logging
 
+  migrate:
+    image: ${REGISTRY_PREFIX:-ghcr.io/yourname}/assetflow-backend:${ASSETFLOW_VERSION}
+    restart: "no"
+    environment:
+      RUN_DATABASE_MIGRATIONS: "only"
+      DATABASE_HOST: db
+      DATABASE_PORT: "5432"
+      DATABASE_NAME: ${POSTGRES_DB}
+      DATABASE_USER: ${POSTGRES_MIGRATION_USER:-assetflow_migrator}
+      DATABASE_PASSWORD_FILE: /run/secrets/postgres_migration_password
+    secrets: [postgres_migration_password]
+    depends_on:
+      db:
+        condition: service_healthy
+    networks: [data]
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: ["ALL"]
+    read_only: true
+    tmpfs: ["/tmp:size=64m,noexec,nosuid"]
+    logging: *default-logging
+
   api:
     image: ${REGISTRY_PREFIX:-ghcr.io/yourname}/assetflow-backend:${ASSETFLOW_VERSION}
     restart: unless-stopped
     environment:
       NODE_ENV: production
+      RUN_DATABASE_MIGRATIONS: "false"
       PORT: "8080"
       TZ: ${TZ:-Asia/Ho_Chi_Minh}
       APP_URL: ${APP_URL}
@@ -42,29 +69,59 @@ services:
       DATABASE_HOST: db
       DATABASE_PORT: "5432"
       DATABASE_NAME: ${POSTGRES_DB}
-      DATABASE_USER: ${POSTGRES_USER}
-      DATABASE_PASSWORD_FILE: /run/secrets/postgres_password
+      DATABASE_USER: ${POSTGRES_RUNTIME_USER:-assetflow_runtime}
+      DATABASE_PASSWORD_FILE: /run/secrets/postgres_runtime_password
       DATA_ENCRYPTION_KEY_FILE: /run/secrets/data_encryption_key
+      METRICS_TOKEN_FILE: /run/secrets/metrics_token
       ALLOW_INSECURE_LDAP: "false"
       ENABLE_SWAGGER: "false"
       TRUST_PROXY: "true"
       STORAGE_PATH: /var/lib/assetflow/documents
       TRUSTED_PROXY_CIDRS: ${TRUSTED_PROXY_CIDRS:-172.16.0.0/12}
     secrets:
-      - postgres_password
+      - postgres_runtime_password
       - data_encryption_key
       - initial_admin_password
+      - metrics_token
     volumes:
       - document_data:/var/lib/assetflow/documents
     depends_on:
-      db:
-        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
     expose: ["8080"]
     networks: [edge, data]
     security_opt: ["no-new-privileges:true"]
     cap_drop: ["ALL"]
     read_only: true
     tmpfs: ["/tmp:size=64m,noexec,nosuid"]
+    logging: *default-logging
+
+  prometheus:
+    image: prom/prometheus:v3.5.0
+    profiles: ["monitoring"]
+    restart: unless-stopped
+    command: ["--config.file=/etc/prometheus/prometheus.yml", "--storage.tsdb.path=/prometheus", "--web.enable-lifecycle"]
+    volumes:
+      - ../../monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ../../monitoring/alerts.yml:/etc/prometheus/alerts.yml:ro
+      - prometheus_data:/prometheus
+    secrets: [metrics_token]
+    ports: ["127.0.0.1:9090:9090"]
+    networks: [data]
+    security_opt: ["no-new-privileges:true"]
+    logging: *default-logging
+
+  alertmanager:
+    image: prom/alertmanager:v0.28.1
+    profiles: ["monitoring"]
+    restart: unless-stopped
+    command: ["--config.file=/etc/alertmanager/alertmanager.yml", "--storage.path=/alertmanager"]
+    volumes:
+      - ../../monitoring/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+      - alertmanager_data:/alertmanager
+    ports: ["127.0.0.1:9093:9093"]
+    networks: [data]
+    security_opt: ["no-new-privileges:true"]
     logging: *default-logging
 
   web:
@@ -109,11 +166,19 @@ volumes:
   document_data:
   caddy_data:
   caddy_config:
+  prometheus_data:
+  alertmanager_data:
 
 secrets:
-  postgres_password:
-    file: ./secrets/postgres_password.txt
+  postgres_bootstrap_password:
+    file: ./secrets/postgres_bootstrap_password.txt
+  postgres_migration_password:
+    file: ./secrets/postgres_migration_password.txt
+  postgres_runtime_password:
+    file: ./secrets/postgres_runtime_password.txt
   data_encryption_key:
     file: ./secrets/data_encryption_key.txt
   initial_admin_password:
     file: ./secrets/initial_admin_password.txt
+  metrics_token:
+    file: ./secrets/metrics_token.txt

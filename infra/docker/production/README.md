@@ -1,72 +1,68 @@
-# AssetFlow — triển khai nội bộ có HTTPS
+# AssetFlow production stack
 
-Cấu hình này chạy Caddy, Web, API và PostgreSQL trên các Docker network tách biệt. Chỉ Caddy mở cổng `80/443`; PostgreSQL không publish ra host.
+Cấu hình này chạy Caddy, Web, API và PostgreSQL trên mạng Docker tách biệt. Chỉ Caddy mở cổng 80/443. API dùng tài khoản database runtime không có quyền DDL; container `migrate` dùng tài khoản owner riêng và thoát sau khi migration thành công. Tài khoản bootstrap PostgreSQL chỉ dùng để khởi tạo/khôi phục và không được cấp cho API.
 
-> Trạng thái phát hành hiện tại là **Internal UAT**. Chỉ mở qua mạng nội bộ hoặc VPN cho đến khi các mục còn lại trong `docs/PRODUCTION_READINESS.md` được đóng.
-
-## Chuẩn bị
-
-Yêu cầu Docker Compose v2, domain nội bộ đã trỏ tới máy chủ và tối thiểu 4 GB RAM.
+## Cài mới
 
 ```bash
 cd infra/docker/production
 cp .env.example .env
 mkdir -p secrets
-```
-
-Tạo ba file secret và giới hạn quyền đọc:
-
-```text
-secrets/postgres_password.txt
-secrets/data_encryption_key.txt
-secrets/initial_admin_password.txt
-```
-
-- `postgres_password.txt`: mật khẩu PostgreSQL duy nhất cho môi trường này.
-- `data_encryption_key.txt`: đúng 32 byte dạng Base64 hoặc 64 ký tự hex; dùng để mã hóa secret Microsoft 365/LDAP.
-- `initial_admin_password.txt`: mật khẩu tạm của tài khoản `admin`, ít nhất 8 ký tự, có chữ hoa, chữ thường, số và ký tự đặc biệt.
-
-Ví dụ tạo khóa mã hóa:
-
-```bash
+openssl rand -hex 32 > secrets/postgres_bootstrap_password.txt
+openssl rand -hex 32 > secrets/postgres_migration_password.txt
+openssl rand -hex 32 > secrets/postgres_runtime_password.txt
 openssl rand -base64 32 > secrets/data_encryption_key.txt
+openssl rand -hex 32 > secrets/metrics_token.txt
+openssl rand -base64 24 > secrets/initial_admin_password.txt
 chmod 600 secrets/*.txt
 ```
 
-Giữ nguyên và backup khóa mã hóa trong secret manager. Mất khóa đồng nghĩa không thể giải mã client secret hoặc LDAP bind password đã lưu. Không commit `.env`, `secrets/`, private key hoặc backup.
-
-## Khởi động
-
-Đặt `ASSETFLOW_VERSION` trong `.env` bằng tag release bất biến, sau đó:
+Sửa domain, URL và tag release bất biến trong `.env`, sau đó:
 
 ```bash
-docker compose config
+docker compose config --quiet
 docker compose pull
 docker compose up -d
 docker compose ps
+curl -fsS https://assets.example.com/api/v1/health/ready
 ```
 
-API chạy migration trước khi nhận request. Mở URL trong `APP_URL`, đăng nhập bằng `admin` và mật khẩu trong `initial_admin_password.txt`; hệ thống bắt buộc đổi mật khẩu ngay.
+Đăng nhập bằng `admin` và mật khẩu trong `initial_admin_password.txt`; hệ thống bắt buộc đổi mật khẩu lần đầu. Không commit `.env`, `secrets/` hoặc backup.
 
-## Backup
-
-Chạy từ thư mục gốc repository:
+## Monitoring và cảnh báo
 
 ```bash
-ASSETFLOW_COMPOSE_FILE=infra/docker/production/compose.yaml \
-ASSETFLOW_DB_SERVICE=db ./scripts/backup.sh
+docker compose --profile monitoring up -d
+ssh -L 9090:127.0.0.1:9090 -L 9093:127.0.0.1:9093 user@server
 ```
 
-Backup bao gồm PostgreSQL, hồ sơ đính kèm và checksum. Secret phải được backup riêng bằng phương thức mã hóa.
+Prometheus và Alertmanager chỉ bind localhost. Trước go-live phải cấu hình receiver email/Slack/webhook đã được phê duyệt trong `infra/monitoring/alertmanager.yml`; mặc định cảnh báo chỉ hiển thị trong giao diện Alertmanager.
+
+## Backup, restore và DR drill
+
+Chạy tại thư mục gốc repository:
+
+```bash
+ASSETFLOW_COMPOSE_FILE=infra/docker/production/compose.yaml ASSETFLOW_DB_SERVICE=db ./scripts/backup.sh
+./scripts/dr-drill.sh backups/assetflow-YYYYMMDDTHHMMSSZ
+```
+
+DR drill khôi phục database vào volume PostgreSQL tạm, kiểm tra checksum và truy vấn dữ liệu rồi tự dọn tài nguyên; nó không chạm database đang chạy. Hàng quý vẫn cần diễn tập full-stack gồm hồ sơ đính kèm, đăng nhập và nghiệp vụ mẫu.
 
 ## Nâng cấp
 
 ```bash
-# 1. Backup và thử restore trên môi trường tách biệt
-# 2. Đổi ASSETFLOW_VERSION trong .env
+git pull --ff-only origin main
+# backup + DR drill trước khi đổi phiên bản
 docker compose pull
 docker compose up -d
 docker compose ps
 ```
 
-Kiểm tra health, đăng nhập, phân quyền và một giao dịch thử sau nâng cấp. Không dùng `latest`, không chạy `docker compose down -v`, và không coi việc copy volume PostgreSQL đang chạy là backup hợp lệ.
+`migrate` phải hoàn tất trước khi API khởi động. Không dùng `docker compose down -v`.
+
+## Microsoft 365 / LDAP và security acceptance
+
+Xem [security testing](../../../docs/SECURITY_TESTING.md). Kiểm tra kết nối thật bằng `scripts/directory-live-test.sh`; script không nhận hoặc in client secret/LDAP bind password vì secret phải được lưu qua trang cài đặt. Chạy HTTPS security baseline bằng `scripts/security-smoke.sh`.
+
+Stack và tooling không thay thế pentest độc lập, duyệt quyền tenant/domain thật, cấu hình kênh cảnh báo thật hoặc phê duyệt go-live của doanh nghiệp.
