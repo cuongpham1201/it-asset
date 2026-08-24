@@ -7,6 +7,7 @@
 AssetFlow là phần mềm self-hosted quản lý vòng đời tài sản: nhập kho, cấp phát, cho mượn, thu hồi, điều chuyển, kiểm kê, bảo trì, lịch sử và Barcode/QR.
 
 > Phiên bản hiện tại phù hợp cho UAT/pilot nội bộ có kiểm soát. Trước khi go-live chính thức, doanh nghiệp cần hoàn thành [Production Readiness Checklist](docs/PRODUCTION_READINESS.md).
+<img width="1885" height="896" alt="image" src="https://github.com/user-attachments/assets/5a7e6fc4-42a1-4a34-86f2-9b9ad8bb25a8" />
 
 ## Cài nhanh bằng Docker
 
@@ -281,7 +282,8 @@ AssetFlow miễn phí và có thể self-host. Nếu dự án hữu ích, bạn 
 
 ### Donate qua Vietcombank
 
-<img width="373" height="450" alt="AssetFlow donate QR" src="https://github.com/user-attachments/assets/a8ce277b-f365-4599-9961-34cc7d4531ec" />
+<img width="379" height="469" alt="image" src="https://github.com/user-attachments/assets/cb41d5ba-38db-4e49-9998-4a39553205c4" />
+
 
 - Chủ tài khoản: **NGUYEN DUC LAM**
 - Số tài khoản: **059000212664**
