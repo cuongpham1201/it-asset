@@ -35,6 +35,14 @@ export class AssetsService{
   }
 
   async get(id:string,actor:Actor){this.assertOperator(actor);const value=await this.db.asset.findFirst({where:{id,deletedAt:null},include});if(!value)throw new NotFoundException({code:'ASSET_NOT_FOUND',message:'Không tìm thấy tài sản'});this.assertAssetScope(actor,value.departmentId);return value}
+  async scan(rawValue:string,actor:Actor){
+    this.assertOperator(actor)
+    const value=rawValue.trim(),departmentId=this.scopedDepartment(actor)
+    const equals={equals:value,mode:'insensitive' as const}
+    const asset=await this.db.asset.findFirst({where:{deletedAt:null,departmentId,OR:[{assetTag:equals},{barcode:equals},{serialNumber:equals}]},include,orderBy:{createdAt:'asc'}})
+    if(!asset)throw new NotFoundException({code:'ASSET_SCAN_NOT_FOUND',message:'Không tìm thấy tài sản theo Barcode, QR, mã tài sản hoặc serial'})
+    return asset
+  }
   async summary(actor:Actor){
     this.assertOperator(actor);const departmentId=this.scopedDepartment(actor),base={deletedAt:null,departmentId}
     const [total,assigned,available,attention,due]=await Promise.all([

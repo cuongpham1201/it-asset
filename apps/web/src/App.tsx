@@ -18,9 +18,10 @@ import {
 import { categories, seedAssets, seedBrandingSettings, seedDepartments, seedEmailSettings, seedSites, seedTransactions, seedUsers } from './data'
 import type { AppUser, Asset, AssetStatus, AssetTransaction, BrandingSettings, Department, EmailSettings, RegionalSettings, Site, TransactionType } from './types'
 import { useAppRoute } from './hooks/useAppRoute'
-import { api } from './services/api-client'
+import { api,ApiError } from './services/api-client'
 import { env } from './config/env'
 import { useRuntimeI18n } from './i18n/runtime'
+import { findAssetByScannedValue } from './features/scanner/scan-lookup'
 
 const money = (value: number) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(value)
 const compactMoney = (value: number) => value >= 1_000_000_000 ? `${(value / 1_000_000_000).toFixed(1)} tỷ` : `${Math.round(value / 1_000_000)} tr`
@@ -314,27 +315,38 @@ function BarcodeCenter({ assets, initialMode, departmentOptions, warehouseOption
   const [result, setResult] = useState<Asset | null>(null)
   const [message, setMessage] = useState('')
   const [cameraActive, setCameraActive] = useState(false)
+  const [lookingUp,setLookingUp]=useState(false)
   const videoRef = useRef<HTMLVideoElement>(null)
   const streamRef = useRef<MediaStream | null>(null)
-  const lookup = (value: string) => {
+  const timerRef=useRef<number|undefined>(undefined)
+  const stopCamera=()=>{if(timerRef.current)window.clearInterval(timerRef.current);timerRef.current=undefined;streamRef.current?.getTracks().forEach(track=>track.stop());streamRef.current=null;setCameraActive(false)}
+  const lookup = async(value: string) => {
     const normalized=normalizeSearchText(value)
     if(!normalized){setMessage('Vui lòng quét hoặc nhập mã tài sản / serial.');return}
-    const exact=assets.find(a=>[a.code,a.barcode||a.code,a.qrCode||a.code,a.serial].some(field=>normalizeSearchText(field)===normalized))
-    const matches:Asset[]=mode==='manual'?(exact?[exact]:[]):exact?[exact]:assets.filter(a=>matchesAssetSearch(a,value))
-    const found=matches[0]
-    setResult(found || null)
-    setMessage(found ? (mode==='manual'?'Mã này đã tồn tại trong sổ tài sản. Không thể nhập trùng.':matches.length>1?`Tìm thấy ${matches.length} tài sản; đang hiển thị kết quả phù hợp nhất.`:'') : (mode==='manual'?'Mã chưa tồn tại. Có thể tạo phiếu nhập kho mới.':'Không tìm thấy tài sản phù hợp.'))
+    setLookingUp(true);setMessage('')
+    try{
+      let found:Asset|null
+      if(env.demoMode)found=findAssetByScannedValue(assets,value)
+      else found=fromApiAsset(await api.get<any>(`/assets/scan?value=${encodeURIComponent(value.trim())}`))
+      if(!found)throw new ApiError(404,'ASSET_SCAN_NOT_FOUND','Không tìm thấy tài sản')
+      setResult(found)
+      setMessage(mode==='manual'?'Mã này đã tồn tại trong sổ tài sản. Không thể nhập trùng.':`Đã nhận diện ${found.code} từ dữ liệu tài sản.`)
+    }catch(error){
+      const notFound=error instanceof ApiError&&error.status===404
+      setResult(null)
+      setMessage(mode==='manual'&&notFound?'Mã chưa tồn tại. Có thể tạo phiếu nhập kho mới.':notFound?'Không tìm thấy tài sản phù hợp.':apiErrorMessage(error))
+    }finally{setLookingUp(false)}
   }
   const changeMode=(next:'lookup'|'manual'|'import')=>{setMode(next);setResult(null);setMessage('')}
-  const startCamera = async () => { try { const Detector = (window as any).BarcodeDetector; if (!Detector) { setMessage('Trình duyệt chưa hỗ trợ quét camera. Bạn có thể dùng máy quét USB hoặc nhập mã.'); return } const stream = await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}}); streamRef.current=stream; setCameraActive(true); if(videoRef.current){videoRef.current.srcObject=stream; await videoRef.current.play()} const detector = new Detector({formats:['code_128','qr_code']}); const timer=window.setInterval(async()=>{if(!videoRef.current)return; const codes=await detector.detect(videoRef.current); if(codes[0]){const value=codes[0].rawValue; setCode(value); lookup(value); clearInterval(timer); stream.getTracks().forEach((t:MediaStreamTrack)=>t.stop());setCameraActive(false)}},500) } catch { setCameraActive(false); setMessage('Không thể mở camera. Vui lòng cấp quyền camera hoặc nhập mã thủ công.') } }
-  useEffect(() => () => streamRef.current?.getTracks().forEach(t=>t.stop()), [])
+  const startCamera = async () => { try { stopCamera();const Detector = (window as any).BarcodeDetector;if(!Detector){setMessage('Trình duyệt chưa hỗ trợ quét camera. Bạn có thể dùng máy quét USB hoặc nhập mã.');return}const supported:string[]=Detector.getSupportedFormats?await Detector.getSupportedFormats():['code_128','qr_code'];const formats=['code_128','qr_code'].filter(format=>supported.includes(format));if(!formats.length){setMessage('Trình duyệt không hỗ trợ CODE128 hoặc QR qua camera. Hãy dùng máy quét USB hoặc nhập mã.');return}const stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}});streamRef.current=stream;setCameraActive(true);if(videoRef.current){videoRef.current.srcObject=stream;await videoRef.current.play()}const detector=new Detector({formats});let detecting=false;timerRef.current=window.setInterval(async()=>{if(!videoRef.current||detecting)return;detecting=true;try{const codes=await detector.detect(videoRef.current);if(codes[0]?.rawValue){const value=codes[0].rawValue;setCode(value);stopCamera();await lookup(value)}}catch{stopCamera();setMessage('Camera không thể giải mã hình ảnh. Hãy thử lại hoặc nhập mã thủ công.')}finally{detecting=false}},500)}catch{stopCamera();setMessage('Không thể mở camera. Vui lòng cấp quyền camera hoặc nhập mã thủ công.')}}
+  useEffect(() => () => {if(timerRef.current)window.clearInterval(timerRef.current);streamRef.current?.getTracks().forEach(track=>track.stop())}, [])
   if(mode==='manual')return <main className="page">
     <section className="page-heading"><div><h1>Nhập kho tài sản</h1><p>Quét Barcode hoặc QR, khai báo trực tiếp hoặc import danh sách tài sản từ Excel.</p></div></section>
     <div className="scanner-mode-tabs"><button onClick={()=>changeMode('lookup')}><Search size={17}/>Tra cứu Barcode / QR</button><button className="active"><Plus size={17}/>Nhập thủ công</button><button onClick={()=>changeMode('import')}><FileSpreadsheet size={17}/>Import template Excel</button></div>
     <section className="card intake-scan-strip">
       <div><span><QrCode size={21}/></span><div><b>Quét Barcode / QR vào phiếu nhập</b><small>Camera hỗ trợ CODE128 và QR Code; cũng có thể dùng máy quét USB hoặc nhập mã thủ công.</small></div></div>
       <video ref={videoRef} className={`scan-video ${cameraActive?'active':''}`} muted playsInline/>
-      <div className="intake-scan-controls"><button className="btn secondary" onClick={startCamera}><ScanLine size={17}/>Mở camera quét mã</button><form onSubmit={e=>{e.preventDefault();lookup(code)}}><input value={code} onChange={e=>setCode(e.target.value)} placeholder="Mã tài sản, Barcode, QR hoặc serial"/><button className="btn primary">Kiểm tra mã</button></form></div>
+      <div className="intake-scan-controls"><button className="btn secondary" disabled={cameraActive||lookingUp} onClick={startCamera}><ScanLine size={17}/>{cameraActive?'Đang quét...':'Mở camera quét mã'}</button><form onSubmit={e=>{e.preventDefault();void lookup(code)}}><input value={code} onChange={e=>setCode(e.target.value)} placeholder="Mã tài sản, Barcode, QR hoặc serial"/><button className="btn primary" disabled={lookingUp}>{lookingUp?'Đang tra cứu...':'Kiểm tra mã'}</button></form></div>
       {message&&<div className={`scan-message ${!result?'success':''}`}>{message}</div>}
     </section>
     <IntakeForm key={code||'new-intake'} initialCode={result?'':code} assets={assets} departmentOptions={departmentOptions} warehouseOptions={warehouseOptions}/>
@@ -348,7 +360,7 @@ function BarcodeCenter({ assets, initialMode, departmentOptions, warehouseOption
     <section className="page-heading"><div><h1>Barcode / QR & Nhập kho</h1><p>Quét Barcode hoặc QR để tra cứu tài sản và lập hồ sơ nhập kho.</p></div></section>
     <div className="scanner-mode-tabs"><button className="active"><Search size={17}/>Tra cứu Barcode / QR</button><button onClick={()=>changeMode('manual')}><Plus size={17}/>Nhập thủ công</button><button onClick={()=>changeMode('import')}><FileSpreadsheet size={17}/>Import template Excel</button></div>
     <section className="barcode-layout">
-      <div className="card scanner-card"><span className="scanner-symbol"><QrCode size={34}/></span><h2>Quét Barcode / QR</h2><p>Đưa Barcode hoặc QR Code vào camera, dùng máy quét USB hoặc nhập mã thủ công.</p><div className="scanner-capabilities"><span><Barcode size={15}/>CODE128</span><span><QrCode size={15}/>QR Code</span></div><div className="scan-source-note"><b>Dữ liệu quét được xử lý thế nào?</b><span>Camera đọc Barcode/QR thành chuỗi mã; máy quét USB nhập cùng chuỗi đó. Hệ thống đối chiếu với mã tài sản hoặc serial trong sổ tài sản.</span></div><video ref={videoRef} className={`scan-video ${cameraActive?'active':''}`} muted playsInline/><button className="btn secondary camera-button" onClick={startCamera}><ScanLine size={17}/>Mở camera quét mã</button><form onSubmit={e=>{e.preventDefault();lookup(code)}} className="scan-input"><input autoFocus value={code} onChange={e=>setCode(e.target.value)} placeholder="Mã tài sản, Barcode, QR hoặc serial"/><button className="btn primary">Tra cứu</button></form>{message&&<div className="scan-message">{message}</div>}</div>
+      <div className="card scanner-card"><span className="scanner-symbol"><QrCode size={34}/></span><h2>Quét Barcode / QR</h2><p>Đưa Barcode hoặc QR Code vào camera, dùng máy quét USB hoặc nhập mã thủ công.</p><div className="scanner-capabilities"><span><Barcode size={15}/>CODE128</span><span><QrCode size={15}/>QR Code</span></div><div className="scan-source-note"><b>Dữ liệu quét được xử lý thế nào?</b><span>Camera hoặc máy quét USB đọc mã thành chuỗi. Hệ thống tra cứu trực tiếp PostgreSQL theo mã tài sản, Barcode hoặc Serial và chỉ trả dữ liệu trong phạm vi được phân quyền.</span></div><video ref={videoRef} className={`scan-video ${cameraActive?'active':''}`} muted playsInline/><button className="btn secondary camera-button" disabled={cameraActive||lookingUp} onClick={startCamera}><ScanLine size={17}/>{cameraActive?'Đang quét...':'Mở camera quét mã'}</button><form onSubmit={e=>{e.preventDefault();void lookup(code)}} className="scan-input"><input autoFocus value={code} onChange={e=>setCode(e.target.value)} placeholder="Mã tài sản, Barcode, QR hoặc serial"/><button className="btn primary" disabled={lookingUp}>{lookingUp?'Đang tra cứu...':'Tra cứu'}</button></form>{message&&<div className="scan-message">{message}</div>}</div>
       <div className="card scan-result">{result?<><div className="result-head"><span className="asset-icon">{iconFor(result.icon,24)}</span><span className={`status ${statusClass[result.status]}`}><i/>{result.status}</span></div><h2>{result.name}</h2><p className="result-code">{result.code} · {result.serial}</p><dl><div><dt>Loại tài sản</dt><dd>{result.category}</dd></div><div><dt>Người đang sử dụng</dt><dd>{result.assignedTo}</dd></div><div><dt>Phòng ban</dt><dd>{result.department}</dd></div><div><dt>Vị trí</dt><dd>{result.location}</dd></div><div><dt>Hãng / Model</dt><dd>{result.manufacturer||'-'} / {result.model||'-'}</dd></div><div><dt>CPU / RAM / Disk</dt><dd>{result.cpu||'-'} / {result.ram||'-'} / {result.storage||'-'}</dd></div></dl><div className="result-actions"><button className="btn secondary" onClick={()=>onBarcode(result)}><QrCode size={17}/>In Barcode / QR</button><button className="btn primary" onClick={()=>onAssign(result)}><UserPlus size={17}/>Cấp phát / Thu hồi</button></div></>:<div className="result-empty"><QrCode size={42}/><h3>Chưa quét tài sản</h3><p>Thông tin tài sản sẽ xuất hiện tại đây sau khi quét Barcode hoặc QR.</p></div>}</div>
     </section>
   </main>

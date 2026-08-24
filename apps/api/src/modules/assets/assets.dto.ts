@@ -1,4 +1,4 @@
-import { Type } from 'class-transformer'
+import { Transform,Type } from 'class-transformer'
 import { IsDateString,IsIn,IsInt,IsNotEmpty,IsNumber,IsOptional,IsString,IsUUID,Max,MaxLength,Min } from 'class-validator'
 import { OmitType,PartialType } from '@nestjs/swagger'
 
@@ -13,6 +13,12 @@ export class ListAssetsQuery{
   @IsOptional() @IsIn(['asc','desc']) order:'asc'|'desc'='asc'
   @Type(()=>Number) @IsInt() @Min(1) page=1
   @Type(()=>Number) @IsInt() @Min(1) @Max(100) limit=20
+}
+
+export class ScanAssetQuery{
+  @Transform(({value})=>typeof value==='string'?value.trim():value)
+  @IsString() @IsNotEmpty() @MaxLength(200)
+  value!:string
 }
 
 // Intake always creates an unassigned READY asset. Lifecycle fields are absent by design.
