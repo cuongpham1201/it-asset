@@ -383,7 +383,7 @@ input,select,textarea,.enterprise-filters input,.enterprise-filters select,.sear
 @media(max-width:680px){.category-quick-add .form-grid{grid-template-columns:1fr}.category-quick-add .form-grid .span-2{grid-column:auto}}
 
 /* Self-hosted enterprise typography with Vietnamese support. */
-:root{--font-enterprise:"Roboto","Segoe UI",Arial,sans-serif;font-family:var(--font-enterprise)}
+:root{--font-enterprise:"Poppins","Segoe UI",Arial,sans-serif;font-family:var(--font-enterprise)}
 html,body,#root,button,input,select,textarea{font-family:var(--font-enterprise)!important;font-variant-numeric:tabular-nums;font-synthesis:none}
 body{font-weight:400;letter-spacing:0;text-rendering:optimizeLegibility;-webkit-font-smoothing:antialiased}
 h1,h2,h3,h4,h5,h6,.brand b,.company-identity b{font-family:var(--font-enterprise)!important;font-weight:600;letter-spacing:-.015em}
@@ -418,6 +418,11 @@ th,.enterprise-asset-table th button,.audit-grid.audit-head{font-family:var(--fo
 
 /* Asset category rail: reserve a separate gutter for the horizontal scrollbar. */
 .asset-group-filter{height:68px!important;min-height:68px;box-sizing:border-box;padding:5px 4px 12px!important;align-items:flex-start;overflow-x:auto;overflow-y:hidden;scrollbar-gutter:stable;overscroll-behavior-inline:contain}
+
+/* Global typography contract: one bundled font across every application surface. */
+:root{--font-enterprise:"Poppins","Segoe UI",Arial,sans-serif;font-family:var(--font-enterprise)!important}
+html,body,#root,#root *,button,input,select,textarea{font-family:var(--font-enterprise)!important}
+code,kbd,pre,.machine-code{font-family:ui-monospace,SFMono-Regular,Consolas,"Liberation Mono",monospace!important}
 .asset-group-filter button{height:49px!important;min-height:49px;min-width:max-content!important;padding:5px 10px!important;align-items:center;flex:0 0 auto}
 .asset-group-filter button>span{width:30px;height:30px;flex:0 0 30px}
 .asset-group-filter button>div{min-width:72px;display:flex;flex-direction:column;justify-content:center;gap:2px}
