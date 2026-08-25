@@ -15,6 +15,8 @@ AssetFlow là phần mềm self-hosted quản lý vòng đời tài sản: nhậ
 
 Máy chủ chỉ cần Linux, Git, Docker Engine và Docker Compose v2. Không cần cài Node.js hoặc PostgreSQL trực tiếp.
 
+Nếu triển khai trên Windows 10/11 bằng Docker Desktop, xem tài liệu riêng: [Triển khai AssetFlow trên Windows bằng Docker](docs/WINDOWS_DOCKER_DEPLOYMENT.md).
+
 Khuyến nghị tối thiểu: 2 CPU, 4 GB RAM, 20 GB ổ đĩa trống và một IP LAN cố định.
 
 ### 1. Kiểm tra máy chủ
@@ -271,6 +273,7 @@ Caddy :80/:443
 
 ## Tài liệu
 
+- [Triển khai trên Windows bằng Docker](docs/WINDOWS_DOCKER_DEPLOYMENT.md)
 - [Production stack](infra/docker/production/README.md)
 - [Kiến trúc](docs/ARCHITECTURE.md)
 - [Production readiness](docs/PRODUCTION_READINESS.md)
