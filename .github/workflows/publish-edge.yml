@@ -52,7 +52,7 @@ jobs:
             org.opencontainers.image.title=AssetFlow ${{ matrix.component }}
             org.opencontainers.image.description=AssetFlow self-hosted asset management
       - name: Build and publish edge
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: apps/${{ matrix.component }}/Dockerfile
