@@ -1,4 +1,4 @@
-import { IncidentImpact,IncidentPriority,IncidentStatus,IncidentUrgency } from '@prisma/client'
+import { IncidentImpact,IncidentPriority,IncidentStatus,IncidentUrgency,RecordStatus,UserRole } from '@prisma/client'
 
 const priorityMatrix:Record<IncidentImpact,Record<IncidentUrgency,IncidentPriority>>={
   CRITICAL:{HIGH:'P1',MEDIUM:'P1',LOW:'P2'},
@@ -30,3 +30,8 @@ export function assertIncidentTransition(from:IncidentStatus,to:IncidentStatus){
   if(from===to)return
   if(!transitions[from].includes(to))throw new Error('INCIDENT_TRANSITION_NOT_ALLOWED')
 }
+
+export const incidentStatusRequiresAssignee=(status:IncidentStatus)=>['ACKNOWLEDGED','IN_PROGRESS'].includes(status)
+
+export const isEligibleIncidentOperator=(user:{role:UserRole;status:RecordStatus;department?:{status:RecordStatus;isIncidentResponseTeam:boolean}|null})=>
+  Boolean(['ADMIN','IT'].includes(user.role)&&user.status==='ACTIVE'&&user.department?.status==='ACTIVE'&&user.department.isIncidentResponseTeam)

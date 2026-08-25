@@ -1,34 +1,41 @@
 generator client {
   provider = "prisma-client-js"
 }
+
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
+
 enum RecordStatus {
   ACTIVE
   INACTIVE
 }
+
 enum UserRole {
   ADMIN
   IT
   HCNS
   USER
 }
+
 enum AuthSource {
   LOCAL
   LDAP
   ENTRA_ID
 }
+
 enum DirectoryProvider {
   M365
   LDAP
 }
+
 enum DirectorySyncStatus {
   RUNNING
   SUCCESS
   FAILED
 }
+
 enum AssetHistoryAction {
   CREATED
   UPDATED
@@ -39,30 +46,36 @@ enum AssetHistoryAction {
   INVENTORIED
   DISPOSED
 }
+
 enum AssetAssignmentType {
   ASSIGNMENT
   LOAN
 }
+
 enum AssetAssignmentStatus {
   OPEN
   CLOSED
   CANCELLED
 }
+
 enum AssetReturnOutcome {
   READY
   MAINTENANCE
   BROKEN
 }
+
 enum MaintenanceStatus {
   OPEN
   COMPLETED
   CANCELLED
 }
+
 enum MaintenanceOutcome {
   READY
   BROKEN
   DISPOSED
 }
+
 enum IncidentCategory {
   POWER
   NETWORK
@@ -75,6 +88,7 @@ enum IncidentCategory {
   TELEPHONY
   OTHER
 }
+
 enum IncidentStatus {
   NEW
   ACKNOWLEDGED
@@ -84,28 +98,72 @@ enum IncidentStatus {
   CLOSED
   CANCELLED
 }
+
 enum IncidentPriority {
   P1
   P2
   P3
   P4
 }
+
 enum IncidentImpact {
   CRITICAL
   HIGH
   MEDIUM
   LOW
 }
+
 enum IncidentUrgency {
   HIGH
   MEDIUM
   LOW
 }
+
+enum IncidentAssignmentRole {
+  PRIMARY
+  SUPPORT
+}
+enum DigitalEntitlementType {
+  LICENSE
+  SSL_CERTIFICATE
+  DOMAIN
+}
+enum DigitalEntitlementStatus {
+  ACTIVE
+  EXPIRING
+  EXPIRED
+  SUSPENDED
+  RETIRED
+}
+enum DigitalAssignmentStatus {
+  ACTIVE
+  REVOKED
+}
+enum DigitalRenewalStatus {
+  PLANNED
+  APPROVED
+  COMPLETED
+  CANCELLED
+}
+enum RenewalAlertStatus {
+  OPEN
+  ACKNOWLEDGED
+  RESOLVED
+  DISMISSED
+}
+
+enum NotificationDeliveryStatus {
+  PENDING
+  SENT
+  FAILED
+}
+
 enum InventoryStatus {
   OPEN
   CLOSED
   CANCELLED
 }
+
 enum InventoryResult {
   PENDING
   MATCHED
@@ -114,22 +172,26 @@ enum InventoryResult {
   LOCATION_MISMATCH
   CUSTODIAN_MISMATCH
 }
+
 enum AssetImportStatus {
   STAGED
   COMMITTED
   ROLLED_BACK
   FAILED
 }
+
 enum AssetImportRowStatus {
   VALID
   INVALID
   COMMITTED
   ROLLED_BACK
 }
+
 enum DiscoverySource {
   AGENT
   NETWORK_SNMP
 }
+
 enum DiscoveryStatus {
   PENDING
   MATCHED
@@ -138,359 +200,412 @@ enum DiscoveryStatus {
   CREATED
   IGNORED
 }
+
 model Department {
-  id String @id @default(uuid()) @db.Uuid
-  code String @unique @db.VarChar(50)
-  name String @db.VarChar(150)
-  parentId String? @db.Uuid
-  parent Department? @relation("DepartmentTree", fields: [parentId], references: [id])
-  children Department[] @relation("DepartmentTree")
-  status RecordStatus @default(ACTIVE)
-  users User[]
-  people Person[]
-  assets Asset[]
-  assignments AssetAssignment[]
-  inventorySessions InventorySession[]
-  incidents Incident[]
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id                     String               @id @default(uuid()) @db.Uuid
+  code                   String               @unique @db.VarChar(50)
+  name                   String               @db.VarChar(150)
+  parentId               String?              @db.Uuid
+  parent                 Department?          @relation("DepartmentTree", fields: [parentId], references: [id])
+  children               Department[]         @relation("DepartmentTree")
+  status                 RecordStatus         @default(ACTIVE)
+  isIncidentResponseTeam Boolean              @default(false)
+  users                  User[]
+  people                 Person[]
+  assets                 Asset[]
+  assignments            AssetAssignment[]
+  inventorySessions      InventorySession[]
+  incidents              Incident[]           @relation("IncidentAffectedDepartment")
+  assignedIncidents      Incident[]           @relation("IncidentAssignedDepartment")
+  incidentAssignments    IncidentAssignment[]
+  digitalEntitlements    DigitalEntitlement[]
+  digitalAssignments     DigitalAssignment[]
+  createdAt              DateTime             @default(now())
+  updatedAt              DateTime             @updatedAt
+
   @@map("departments")
 }
+
 model User {
-  id String @id @default(uuid()) @db.Uuid
-  employeeCode String @unique @db.VarChar(50)
-  username String @unique @db.VarChar(100)
-  fullName String @db.VarChar(150)
-  email String @unique @db.VarChar(255)
-  phone String? @db.VarChar(30)
-  passwordHash String? @db.VarChar(255)
-  role UserRole @default(USER)
-  authSource AuthSource @default(LOCAL)
-  externalId String? @db.VarChar(255)
-  mustChangePassword Boolean @default(false)
-  passwordChangedAt DateTime?
-  lastLoginAt DateTime?
-  departmentId String? @db.Uuid
-  department Department? @relation(fields: [departmentId], references: [id])
-  status RecordStatus @default(ACTIVE)
-  assignedAssets Asset[]
-  histories AssetHistory[] @relation("HistoryActor")
-  assignmentsPerformed AssetAssignment[] @relation("AssignmentActor")
-  returnsPerformed AssetReturn[] @relation("ReturnActor")
-  transfersPerformed AssetTransfer[] @relation("TransferActor")
-  maintenancePerformed MaintenanceRecord[] @relation("MaintenanceActor")
-  incidentsReported Incident[] @relation("IncidentReporter")
-  incidentsAssigned Incident[] @relation("IncidentAssignee")
-  incidentsCreated Incident[] @relation("IncidentCreator")
-  incidentActivities IncidentActivity[] @relation("IncidentActivityActor")
-  inventorySessions InventorySession[] @relation("InventoryCreator")
-  inventoryScans InventoryItem[] @relation("InventoryScanner")
-  importBatches AssetImportBatch[] @relation("ImportCreator")
-  agentEnrollmentTokens AgentEnrollmentToken[] @relation("AgentTokenCreator")
-  discoveryResolutions DiscoveryInboxItem[] @relation("DiscoveryResolver")
-  authSessions AuthSession[]
-  person Person?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  @@map("users")
+  id                          String                 @id @default(uuid()) @db.Uuid
+  employeeCode                String                 @unique @db.VarChar(50)
+  username                    String                 @unique @db.VarChar(100)
+  fullName                    String                 @db.VarChar(150)
+  email                       String                 @unique @db.VarChar(255)
+  phone                       String?                @db.VarChar(30)
+  passwordHash                String?                @db.VarChar(255)
+  role                        UserRole               @default(USER)
+  authSource                  AuthSource             @default(LOCAL)
+  externalId                  String?                @db.VarChar(255)
+  mustChangePassword          Boolean                @default(false)
+  passwordChangedAt           DateTime?
+  lastLoginAt                 DateTime?
+  departmentId                String?                @db.Uuid
+  department                  Department?            @relation(fields: [departmentId], references: [id])
+  status                      RecordStatus           @default(ACTIVE)
+  assignedAssets              Asset[]
+  histories                   AssetHistory[]         @relation("HistoryActor")
+  assignmentsPerformed        AssetAssignment[]      @relation("AssignmentActor")
+  returnsPerformed            AssetReturn[]          @relation("ReturnActor")
+  transfersPerformed          AssetTransfer[]        @relation("TransferActor")
+  maintenancePerformed        MaintenanceRecord[]    @relation("MaintenanceActor")
+  incidentsReported           Incident[]             @relation("IncidentReporter")
+  incidentsAssigned           Incident[]             @relation("IncidentAssignee")
+  incidentsCreated            Incident[]             @relation("IncidentCreator")
+  incidentActivities          IncidentActivity[]     @relation("IncidentActivityActor")
+  incidentAssignmentsReceived IncidentAssignment[]   @relation("IncidentAssignmentAssignee")
+  incidentAssignmentsMade     IncidentAssignment[]   @relation("IncidentAssignmentActor")
+  incidentAssignmentsAccepted IncidentAssignment[]   @relation("IncidentAssignmentAcceptor")
+  incidentAssignmentsReleased IncidentAssignment[]   @relation("IncidentAssignmentReleaser")
+  digitalEntitlementsOwned     DigitalEntitlement[]   @relation("DigitalEntitlementOwner")
+  digitalEntitlementsCreated   DigitalEntitlement[]   @relation("DigitalEntitlementCreator")
+  digitalAssignmentsMade       DigitalAssignment[]    @relation("DigitalAssignmentActor")
+  digitalAssignmentsRevoked    DigitalAssignment[]    @relation("DigitalAssignmentRevoker")
+  digitalRenewalsApproved      DigitalRenewal[]       @relation("DigitalRenewalApprover")
+  digitalRenewalsCompleted     DigitalRenewal[]       @relation("DigitalRenewalActor")
+  renewalAlertsAcknowledged    RenewalAlert[]         @relation("RenewalAlertAcknowledger")
+  renewalPoliciesUpdated       RenewalAlertPolicy[]   @relation("RenewalPolicyUpdater")
+  inventorySessions           InventorySession[]     @relation("InventoryCreator")
+  inventoryScans              InventoryItem[]        @relation("InventoryScanner")
+  importBatches               AssetImportBatch[]     @relation("ImportCreator")
+  agentEnrollmentTokens       AgentEnrollmentToken[] @relation("AgentTokenCreator")
+  discoveryResolutions        DiscoveryInboxItem[]   @relation("DiscoveryResolver")
+  authSessions                AuthSession[]
+  person                      Person?
+  createdAt                   DateTime               @default(now())
+  updatedAt                   DateTime               @updatedAt
+
   @@unique([authSource, externalId])
+  @@map("users")
 }
+
 model DirectoryConfiguration {
-  id String @id @default(uuid()) @db.Uuid
-  provider DirectoryProvider @unique
-  enabled Boolean @default(false)
-  tenantId String? @db.VarChar(100)
-  clientId String? @db.VarChar(100)
-  ldapUrl String? @db.VarChar(500)
-  baseDn String? @db.VarChar(1000)
-  bindDn String? @db.VarChar(1000)
-  secretEncrypted String?
-  caCertificate String?
-  userFilter String? @db.VarChar(2000)
-  useTls Boolean @default(true)
-  schedule String @default("MANUAL") @db.VarChar(30)
-  syncDisabled Boolean @default(false)
-  groupMapping Json @default("{}")
-  departmentAttribute String @default("department") @db.VarChar(100)
-  emailAttribute String @default("mail") @db.VarChar(100)
-  employeeCodeAttribute String @default("employeeID") @db.VarChar(100)
-  usernameAttribute String @default("sAMAccountName") @db.VarChar(100)
-  lastTestAt DateTime?
-  lastTestOk Boolean?
-  lastTestMessage String?
-  lastSyncAt DateTime?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  syncRuns DirectorySyncRun[]
+  id                    String             @id @default(uuid()) @db.Uuid
+  provider              DirectoryProvider  @unique
+  enabled               Boolean            @default(false)
+  tenantId              String?            @db.VarChar(100)
+  clientId              String?            @db.VarChar(100)
+  ldapUrl               String?            @db.VarChar(500)
+  baseDn                String?            @db.VarChar(1000)
+  bindDn                String?            @db.VarChar(1000)
+  secretEncrypted       String?
+  caCertificate         String?
+  userFilter            String?            @db.VarChar(2000)
+  useTls                Boolean            @default(true)
+  schedule              String             @default("MANUAL") @db.VarChar(30)
+  syncDisabled          Boolean            @default(false)
+  groupMapping          Json               @default("{}")
+  departmentAttribute   String             @default("department") @db.VarChar(100)
+  emailAttribute        String             @default("mail") @db.VarChar(100)
+  employeeCodeAttribute String             @default("employeeID") @db.VarChar(100)
+  usernameAttribute     String             @default("sAMAccountName") @db.VarChar(100)
+  lastTestAt            DateTime?
+  lastTestOk            Boolean?
+  lastTestMessage       String?
+  lastSyncAt            DateTime?
+  syncLicenses          Boolean            @default(false)
+  lastLicenseSyncAt     DateTime?
+  lastLicenseSyncStatus String?             @db.VarChar(30)
+  lastLicenseSyncMessage String?
+  createdAt             DateTime           @default(now())
+  updatedAt             DateTime           @updatedAt
+  syncRuns              DirectorySyncRun[]
+
   @@map("directory_configurations")
 }
+
 model DirectorySyncRun {
-  id String @id @default(uuid()) @db.Uuid
-  configurationId String @db.Uuid
-  configuration DirectoryConfiguration @relation(fields: [configurationId], references: [id], onDelete: Cascade)
-  status DirectorySyncStatus @default(RUNNING)
-  startedAt DateTime @default(now())
-  finishedAt DateTime?
-  discovered Int @default(0)
-  created Int @default(0)
-  updated Int @default(0)
-  disabled Int @default(0)
-  skipped Int @default(0)
-  errorMessage String?
-  triggeredBy String? @db.VarChar(100)
+  id              String                 @id @default(uuid()) @db.Uuid
+  configurationId String                 @db.Uuid
+  configuration   DirectoryConfiguration @relation(fields: [configurationId], references: [id], onDelete: Cascade)
+  status          DirectorySyncStatus    @default(RUNNING)
+  startedAt       DateTime               @default(now())
+  finishedAt      DateTime?
+  discovered      Int                    @default(0)
+  created         Int                    @default(0)
+  updated         Int                    @default(0)
+  disabled        Int                    @default(0)
+  skipped         Int                    @default(0)
+  errorMessage    String?
+  triggeredBy     String?                @db.VarChar(100)
+
   @@index([configurationId, startedAt])
   @@map("directory_sync_runs")
 }
+
 model AuthSession {
-  id String @id @default(uuid()) @db.Uuid
-  tokenHash String @unique @db.VarChar(64)
-  userId String @db.Uuid
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id        String    @id @default(uuid()) @db.Uuid
+  tokenHash String    @unique @db.VarChar(64)
+  userId    String    @db.Uuid
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   expiresAt DateTime
   revokedAt DateTime?
-  createdAt DateTime @default(now())
+  createdAt DateTime  @default(now())
+
   @@index([userId, expiresAt])
   @@map("auth_sessions")
 }
+
 model Person {
-  id String @id @default(uuid()) @db.Uuid
-  employeeCode String @unique @db.VarChar(50)
-  fullName String @db.VarChar(150)
-  email String? @unique @db.VarChar(255)
-  phone String? @db.VarChar(30)
-  jobTitle String? @db.VarChar(150)
-  departmentId String @db.Uuid
-  locationId String? @db.Uuid
-  linkedUserId String? @unique @db.Uuid
-  source AuthSource @default(LOCAL)
-  externalId String? @db.VarChar(255)
-  status RecordStatus @default(ACTIVE)
-  department Department @relation(fields: [departmentId], references: [id])
-  location Location? @relation(fields: [locationId], references: [id])
-  linkedUser User? @relation(fields: [linkedUserId], references: [id], onDelete: SetNull)
-  currentAssets Asset[] @relation("CurrentCustodian")
-  assignments AssetAssignment[]
-  inventoryExpectedItems InventoryItem[] @relation("InventoryExpectedCustodian")
-  inventoryObservedItems InventoryItem[] @relation("InventoryObservedCustodian")
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id                     String            @id @default(uuid()) @db.Uuid
+  employeeCode           String            @unique @db.VarChar(50)
+  fullName               String            @db.VarChar(150)
+  email                  String?           @unique @db.VarChar(255)
+  phone                  String?           @db.VarChar(30)
+  jobTitle               String?           @db.VarChar(150)
+  departmentId           String            @db.Uuid
+  locationId             String?           @db.Uuid
+  linkedUserId           String?           @unique @db.Uuid
+  source                 AuthSource        @default(LOCAL)
+  externalId             String?           @db.VarChar(255)
+  status                 RecordStatus      @default(ACTIVE)
+  department             Department        @relation(fields: [departmentId], references: [id])
+  location               Location?         @relation(fields: [locationId], references: [id])
+  linkedUser             User?             @relation(fields: [linkedUserId], references: [id], onDelete: SetNull)
+  currentAssets          Asset[]           @relation("CurrentCustodian")
+  assignments            AssetAssignment[]
+  inventoryExpectedItems InventoryItem[]   @relation("InventoryExpectedCustodian")
+  inventoryObservedItems InventoryItem[]   @relation("InventoryObservedCustodian")
+  digitalAssignments      DigitalAssignment[]
+  microsoftLicenseAssignments MicrosoftLicenseAssignment[]
+  createdAt              DateTime          @default(now())
+  updatedAt              DateTime          @updatedAt
+
   @@unique([source, externalId])
   @@index([departmentId, status])
   @@map("people")
 }
+
 model Location {
-  id String @id @default(uuid()) @db.Uuid
-  code String @unique @db.VarChar(50)
-  name String @db.VarChar(150)
-  parentId String? @db.Uuid
-  parent Location? @relation("LocationTree", fields: [parentId], references: [id])
-  children Location[] @relation("LocationTree")
-  type String @db.VarChar(30)
-  address String?
-  status RecordStatus @default(ACTIVE)
-  warehouses Warehouse[]
-  assets Asset[]
-  people Person[]
-  historyFrom AssetHistory[] @relation("HistoryFromLocation")
-  historyTo AssetHistory[] @relation("HistoryToLocation")
-  assignments AssetAssignment[]
-  returns AssetReturn[]
-  transfersFrom AssetTransfer[] @relation("TransferFromLocation")
-  transfersTo AssetTransfer[] @relation("TransferToLocation")
-  inventorySessions InventorySession[]
-  incidents Incident[]
-  inventoryExpectedItems InventoryItem[] @relation("InventoryExpectedLocation")
-  inventoryObservedItems InventoryItem[] @relation("InventoryObservedLocation")
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id                     String             @id @default(uuid()) @db.Uuid
+  code                   String             @unique @db.VarChar(50)
+  name                   String             @db.VarChar(150)
+  parentId               String?            @db.Uuid
+  parent                 Location?          @relation("LocationTree", fields: [parentId], references: [id])
+  children               Location[]         @relation("LocationTree")
+  type                   String             @db.VarChar(30)
+  address                String?
+  status                 RecordStatus       @default(ACTIVE)
+  warehouses             Warehouse[]
+  assets                 Asset[]
+  people                 Person[]
+  historyFrom            AssetHistory[]     @relation("HistoryFromLocation")
+  historyTo              AssetHistory[]     @relation("HistoryToLocation")
+  assignments            AssetAssignment[]
+  returns                AssetReturn[]
+  transfersFrom          AssetTransfer[]    @relation("TransferFromLocation")
+  transfersTo            AssetTransfer[]    @relation("TransferToLocation")
+  inventorySessions      InventorySession[]
+  incidents              Incident[]
+  inventoryExpectedItems InventoryItem[]    @relation("InventoryExpectedLocation")
+  inventoryObservedItems InventoryItem[]    @relation("InventoryObservedLocation")
+  createdAt              DateTime           @default(now())
+  updatedAt              DateTime           @updatedAt
+
   @@map("locations")
 }
+
 model Warehouse {
-  id String @id @default(uuid()) @db.Uuid
-  code String @unique @db.VarChar(50)
-  name String @db.VarChar(150)
-  locationId String @db.Uuid
-  location Location @relation(fields: [locationId], references: [id])
-  description String?
-  status RecordStatus @default(ACTIVE)
-  assets Asset[]
-  returns AssetReturn[]
-  transfersFrom AssetTransfer[] @relation("TransferFromWarehouse")
-  transfersTo AssetTransfer[] @relation("TransferToWarehouse")
+  id                 String              @id @default(uuid()) @db.Uuid
+  code               String              @unique @db.VarChar(50)
+  name               String              @db.VarChar(150)
+  locationId         String              @db.Uuid
+  location           Location            @relation(fields: [locationId], references: [id])
+  description        String?
+  status             RecordStatus        @default(ACTIVE)
+  assets             Asset[]
+  returns            AssetReturn[]
+  transfersFrom      AssetTransfer[]     @relation("TransferFromWarehouse")
+  transfersTo        AssetTransfer[]     @relation("TransferToWarehouse")
   maintenanceRecords MaintenanceRecord[]
-  inventorySessions InventorySession[]
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  inventorySessions  InventorySession[]
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+
   @@map("warehouses")
 }
+
 model AssetCategory {
-  id String @id @default(uuid()) @db.Uuid
-  code String @unique @db.VarChar(50)
-  name String @db.VarChar(150)
-  parentId String? @db.Uuid
-  parent AssetCategory? @relation("CategoryTree", fields: [parentId], references: [id])
-  children AssetCategory[] @relation("CategoryTree")
-  description String?
-  status RecordStatus @default(ACTIVE)
-  models AssetModel[]
-  assets Asset[]
+  id                String             @id @default(uuid()) @db.Uuid
+  code              String             @unique @db.VarChar(50)
+  name              String             @db.VarChar(150)
+  parentId          String?            @db.Uuid
+  parent            AssetCategory?     @relation("CategoryTree", fields: [parentId], references: [id])
+  children          AssetCategory[]    @relation("CategoryTree")
+  description       String?
+  status            RecordStatus       @default(ACTIVE)
+  models            AssetModel[]
+  assets            Asset[]
   inventorySessions InventorySession[]
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+
   @@map("asset_categories")
 }
+
 model Manufacturer {
-  id String @id @default(uuid()) @db.Uuid
-  name String @unique @db.VarChar(150)
-  website String?
-  supportUrl String?
-  supportPhone String? @db.VarChar(30)
-  status RecordStatus @default(ACTIVE)
-  models AssetModel[]
-  assets Asset[]
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id           String       @id @default(uuid()) @db.Uuid
+  name         String       @unique @db.VarChar(150)
+  website      String?
+  supportUrl   String?
+  supportPhone String?      @db.VarChar(30)
+  status       RecordStatus @default(ACTIVE)
+  models       AssetModel[]
+  assets       Asset[]
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
   @@map("manufacturers")
 }
+
 model AssetModel {
-  id String @id @default(uuid()) @db.Uuid
-  categoryId String @db.Uuid
-  manufacturerId String @db.Uuid
-  category AssetCategory @relation(fields: [categoryId], references: [id])
-  manufacturer Manufacturer @relation(fields: [manufacturerId], references: [id])
-  name String @db.VarChar(150)
-  modelNumber String? @db.VarChar(100)
-  description String?
-  status RecordStatus @default(ACTIVE)
-  assets Asset[]
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id             String        @id @default(uuid()) @db.Uuid
+  categoryId     String        @db.Uuid
+  manufacturerId String        @db.Uuid
+  category       AssetCategory @relation(fields: [categoryId], references: [id])
+  manufacturer   Manufacturer  @relation(fields: [manufacturerId], references: [id])
+  name           String        @db.VarChar(150)
+  modelNumber    String?       @db.VarChar(100)
+  description    String?
+  status         RecordStatus  @default(ACTIVE)
+  assets         Asset[]
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
   @@unique([manufacturerId, name])
   @@map("asset_models")
 }
+
 model AssetStatus {
-  id String @id @default(uuid()) @db.Uuid
-  code String @unique @db.VarChar(30)
-  name String @db.VarChar(100)
-  color String @db.VarChar(20)
+  id           String  @id @default(uuid()) @db.Uuid
+  code         String  @unique @db.VarChar(30)
+  name         String  @db.VarChar(100)
+  color        String  @db.VarChar(20)
   isAssignable Boolean @default(false)
   isDeployable Boolean @default(false)
-  isArchived Boolean @default(false)
-  sortOrder Int
-  assets Asset[]
+  isArchived   Boolean @default(false)
+  sortOrder    Int
+  assets       Asset[]
+
   @@map("asset_statuses")
 }
+
 model Asset {
-  id String @id @default(uuid()) @db.Uuid
-  assetTag String @unique @db.VarChar(100)
-  name String @db.VarChar(200)
-  serialNumber String? @unique @db.VarChar(150)
-  systemUuid String? @unique @db.VarChar(100)
-  barcode String @unique @db.VarChar(150)
-  categoryId String @db.Uuid
-  modelId String? @db.Uuid
-  manufacturerId String? @db.Uuid
-  statusId String @db.Uuid
-  assignedUserId String? @db.Uuid
-  currentCustodianId String? @db.Uuid
-  departmentId String? @db.Uuid
-  locationId String? @db.Uuid
-  warehouseId String? @db.Uuid
-  category AssetCategory @relation(fields: [categoryId], references: [id])
-  model AssetModel? @relation(fields: [modelId], references: [id])
-  manufacturer Manufacturer? @relation(fields: [manufacturerId], references: [id])
-  status AssetStatus @relation(fields: [statusId], references: [id])
-  assignedUser User? @relation(fields: [assignedUserId], references: [id])
-  currentCustodian Person? @relation("CurrentCustodian", fields: [currentCustodianId], references: [id])
-  department Department? @relation(fields: [departmentId], references: [id])
-  location Location? @relation(fields: [locationId], references: [id])
-  warehouse Warehouse? @relation(fields: [warehouseId], references: [id])
-  purchaseDate DateTime? @db.Date
-  purchaseCost Decimal? @db.Decimal(18, 2)
-  warrantyMonths Int?
-  warrantyExpiry DateTime? @db.Date
-  cpu String? @db.VarChar(200)
-  ram String? @db.VarChar(200)
-  storage String? @db.VarChar(200)
-  operatingSystem String? @db.VarChar(200)
-  ipAddress String? @db.VarChar(64)
-  macAddress String? @db.VarChar(64)
-  notes String?
-  deletedAt DateTime?
-  histories AssetHistory[]
-  assignments AssetAssignment[]
-  returns AssetReturn[]
-  transfers AssetTransfer[]
-  maintenanceRecords MaintenanceRecord[]
-  incidents Incident[]
-  inventoryItems InventoryItem[]
-  importRows AssetImportRow[]
-  endpointAgents EndpointAgent[] @relation("AgentLinkedAsset")
+  id                   String               @id @default(uuid()) @db.Uuid
+  assetTag             String               @unique @db.VarChar(100)
+  name                 String               @db.VarChar(200)
+  serialNumber         String?              @unique @db.VarChar(150)
+  systemUuid           String?              @unique @db.VarChar(100)
+  barcode              String               @unique @db.VarChar(150)
+  categoryId           String               @db.Uuid
+  modelId              String?              @db.Uuid
+  manufacturerId       String?              @db.Uuid
+  statusId             String               @db.Uuid
+  assignedUserId       String?              @db.Uuid
+  currentCustodianId   String?              @db.Uuid
+  departmentId         String?              @db.Uuid
+  locationId           String?              @db.Uuid
+  warehouseId          String?              @db.Uuid
+  category             AssetCategory        @relation(fields: [categoryId], references: [id])
+  model                AssetModel?          @relation(fields: [modelId], references: [id])
+  manufacturer         Manufacturer?        @relation(fields: [manufacturerId], references: [id])
+  status               AssetStatus          @relation(fields: [statusId], references: [id])
+  assignedUser         User?                @relation(fields: [assignedUserId], references: [id])
+  currentCustodian     Person?              @relation("CurrentCustodian", fields: [currentCustodianId], references: [id])
+  department           Department?          @relation(fields: [departmentId], references: [id])
+  location             Location?            @relation(fields: [locationId], references: [id])
+  warehouse            Warehouse?           @relation(fields: [warehouseId], references: [id])
+  purchaseDate         DateTime?            @db.Date
+  purchaseCost         Decimal?             @db.Decimal(18, 2)
+  warrantyMonths       Int?
+  warrantyExpiry       DateTime?            @db.Date
+  cpu                  String?              @db.VarChar(200)
+  ram                  String?              @db.VarChar(200)
+  storage              String?              @db.VarChar(200)
+  operatingSystem      String?              @db.VarChar(200)
+  ipAddress            String?              @db.VarChar(64)
+  macAddress           String?              @db.VarChar(64)
+  notes                String?
+  deletedAt            DateTime?
+  histories            AssetHistory[]
+  assignments          AssetAssignment[]
+  returns              AssetReturn[]
+  transfers            AssetTransfer[]
+  maintenanceRecords   MaintenanceRecord[]
+  incidents            Incident[]
+  inventoryItems       InventoryItem[]
+  importRows           AssetImportRow[]
+  endpointAgents       EndpointAgent[]      @relation("AgentLinkedAsset")
   suggestedDiscoveries DiscoveryInboxItem[] @relation("DiscoverySuggestedAsset")
-  resolvedDiscoveries DiscoveryInboxItem[] @relation("DiscoveryResolvedAsset")
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  resolvedDiscoveries  DiscoveryInboxItem[] @relation("DiscoveryResolvedAsset")
+  digitalAssignments   DigitalAssignment[]
+  createdAt            DateTime             @default(now())
+  updatedAt            DateTime             @updatedAt
+
   @@index([serialNumber])
   @@index([categoryId, statusId, departmentId, locationId])
   @@map("assets")
 }
 
 model AgentEnrollmentToken {
-  id String @id @default(uuid()) @db.Uuid
-  name String @db.VarChar(150)
-  tokenHash String @unique @db.VarChar(64)
-  siteCode String? @db.VarChar(100)
-  expiresAt DateTime
-  maxEnrollments Int @default(100)
-  enrollmentCount Int @default(0)
-  lastUsedAt DateTime?
-  revokedAt DateTime?
-  createdBy String @db.Uuid
-  creator User @relation("AgentTokenCreator", fields: [createdBy], references: [id], onDelete: Restrict)
-  agents EndpointAgent[]
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id              String          @id @default(uuid()) @db.Uuid
+  name            String          @db.VarChar(150)
+  tokenHash       String          @unique @db.VarChar(64)
+  siteCode        String?         @db.VarChar(100)
+  expiresAt       DateTime
+  maxEnrollments  Int             @default(100)
+  enrollmentCount Int             @default(0)
+  lastUsedAt      DateTime?
+  revokedAt       DateTime?
+  createdBy       String          @db.Uuid
+  creator         User            @relation("AgentTokenCreator", fields: [createdBy], references: [id], onDelete: Restrict)
+  agents          EndpointAgent[]
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
   @@index([expiresAt, revokedAt])
   @@map("agent_enrollment_tokens")
 }
 
 model EndpointAgent {
-  id String @id @default(uuid()) @db.Uuid
-  agentKey String @unique @db.VarChar(100)
-  credentialHash String @unique @db.VarChar(64)
-  enrollmentTokenId String @db.Uuid
-  fingerprint String @unique @db.VarChar(64)
-  hostname String @db.VarChar(255)
-  siteCode String? @db.VarChar(100)
-  agentVersion String @db.VarChar(50)
-  osFamily String @db.VarChar(30)
-  linkedAssetId String? @unique @db.Uuid
-  firstSeenAt DateTime @default(now())
-  lastSeenAt DateTime @default(now())
-  enrolledAt DateTime @default(now())
-  revokedAt DateTime?
-  enrollmentToken AgentEnrollmentToken @relation(fields: [enrollmentTokenId], references: [id], onDelete: Restrict)
-  linkedAsset Asset? @relation("AgentLinkedAsset", fields: [linkedAssetId], references: [id], onDelete: SetNull)
-  snapshots AgentInventorySnapshot[]
-  discoveryItem DiscoveryInboxItem?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id                String                   @id @default(uuid()) @db.Uuid
+  agentKey          String                   @unique @db.VarChar(100)
+  credentialHash    String                   @unique @db.VarChar(64)
+  enrollmentTokenId String                   @db.Uuid
+  fingerprint       String                   @unique @db.VarChar(64)
+  hostname          String                   @db.VarChar(255)
+  siteCode          String?                  @db.VarChar(100)
+  agentVersion      String                   @db.VarChar(50)
+  osFamily          String                   @db.VarChar(30)
+  linkedAssetId     String?                  @unique @db.Uuid
+  firstSeenAt       DateTime                 @default(now())
+  lastSeenAt        DateTime                 @default(now())
+  enrolledAt        DateTime                 @default(now())
+  revokedAt         DateTime?
+  enrollmentToken   AgentEnrollmentToken     @relation(fields: [enrollmentTokenId], references: [id], onDelete: Restrict)
+  linkedAsset       Asset?                   @relation("AgentLinkedAsset", fields: [linkedAssetId], references: [id], onDelete: SetNull)
+  snapshots         AgentInventorySnapshot[]
+  discoveryItem     DiscoveryInboxItem?
+  createdAt         DateTime                 @default(now())
+  updatedAt         DateTime                 @updatedAt
+
   @@index([hostname, lastSeenAt])
   @@map("endpoint_agents")
 }
 
 model AgentInventorySnapshot {
-  id String @id @default(uuid()) @db.Uuid
-  agentId String @db.Uuid
-  schemaVersion String @db.VarChar(20)
-  collectedAt DateTime
-  hostname String @db.VarChar(255)
-  serialNumber String? @db.VarChar(150)
-  systemUuid String? @db.VarChar(100)
-  primaryMac String? @db.VarChar(64)
-  payload Json
-  agent EndpointAgent @relation(fields: [agentId], references: [id], onDelete: Cascade)
-  createdAt DateTime @default(now())
+  id            String        @id @default(uuid()) @db.Uuid
+  agentId       String        @db.Uuid
+  schemaVersion String        @db.VarChar(20)
+  collectedAt   DateTime
+  hostname      String        @db.VarChar(255)
+  serialNumber  String?       @db.VarChar(150)
+  systemUuid    String?       @db.VarChar(100)
+  primaryMac    String?       @db.VarChar(64)
+  payload       Json
+  agent         EndpointAgent @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  createdAt     DateTime      @default(now())
+
   @@unique([agentId, collectedAt])
   @@index([serialNumber])
   @@index([primaryMac])
@@ -499,345 +614,625 @@ model AgentInventorySnapshot {
 }
 
 model DiscoveryInboxItem {
-  id String @id @default(uuid()) @db.Uuid
-  source DiscoverySource @default(AGENT)
-  status DiscoveryStatus @default(PENDING)
-  agentId String @unique @db.Uuid
-  suggestedAssetId String? @db.Uuid
-  resolvedAssetId String? @db.Uuid
-  matchConfidence Int @default(0)
-  conflictReason String? @db.VarChar(1000)
-  resolutionNote String? @db.VarChar(2000)
-  resolvedBy String? @db.Uuid
-  resolvedAt DateTime?
-  lastObservedAt DateTime @default(now())
-  agent EndpointAgent @relation(fields: [agentId], references: [id], onDelete: Cascade)
-  suggestedAsset Asset? @relation("DiscoverySuggestedAsset", fields: [suggestedAssetId], references: [id], onDelete: SetNull)
-  resolvedAsset Asset? @relation("DiscoveryResolvedAsset", fields: [resolvedAssetId], references: [id], onDelete: SetNull)
-  resolver User? @relation("DiscoveryResolver", fields: [resolvedBy], references: [id], onDelete: Restrict)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id               String          @id @default(uuid()) @db.Uuid
+  source           DiscoverySource @default(AGENT)
+  status           DiscoveryStatus @default(PENDING)
+  agentId          String          @unique @db.Uuid
+  suggestedAssetId String?         @db.Uuid
+  resolvedAssetId  String?         @db.Uuid
+  matchConfidence  Int             @default(0)
+  conflictReason   String?         @db.VarChar(1000)
+  resolutionNote   String?         @db.VarChar(2000)
+  resolvedBy       String?         @db.Uuid
+  resolvedAt       DateTime?
+  lastObservedAt   DateTime        @default(now())
+  agent            EndpointAgent   @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  suggestedAsset   Asset?          @relation("DiscoverySuggestedAsset", fields: [suggestedAssetId], references: [id], onDelete: SetNull)
+  resolvedAsset    Asset?          @relation("DiscoveryResolvedAsset", fields: [resolvedAssetId], references: [id], onDelete: SetNull)
+  resolver         User?           @relation("DiscoveryResolver", fields: [resolvedBy], references: [id], onDelete: Restrict)
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+
   @@index([status, lastObservedAt])
   @@map("discovery_inbox_items")
 }
+
 model AssetAssignment {
-  id String @id @default(uuid()) @db.Uuid
-  assignmentNo String @unique @db.VarChar(50)
-  assetId String @db.Uuid
-  type AssetAssignmentType
-  assignedToId String @db.Uuid
-  departmentId String @db.Uuid
-  locationId String @db.Uuid
-  assignedDate DateTime @default(now())
-  expectedReturnDate DateTime? @db.Date
-  conditionOut String @db.VarChar(100)
-  note String?
-  assignedBy String @db.Uuid
-  status AssetAssignmentStatus @default(OPEN)
-  closedAt DateTime?
-  asset Asset @relation(fields: [assetId], references: [id], onDelete: Restrict)
-  assignedTo Person @relation(fields: [assignedToId], references: [id], onDelete: Restrict)
-  department Department @relation(fields: [departmentId], references: [id], onDelete: Restrict)
-  location Location @relation(fields: [locationId], references: [id], onDelete: Restrict)
-  actor User @relation("AssignmentActor", fields: [assignedBy], references: [id], onDelete: Restrict)
-  returnRecord AssetReturn?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id                 String                @id @default(uuid()) @db.Uuid
+  assignmentNo       String                @unique @db.VarChar(50)
+  assetId            String                @db.Uuid
+  type               AssetAssignmentType
+  assignedToId       String                @db.Uuid
+  departmentId       String                @db.Uuid
+  locationId         String                @db.Uuid
+  assignedDate       DateTime              @default(now())
+  expectedReturnDate DateTime?             @db.Date
+  conditionOut       String                @db.VarChar(100)
+  note               String?
+  assignedBy         String                @db.Uuid
+  status             AssetAssignmentStatus @default(OPEN)
+  closedAt           DateTime?
+  asset              Asset                 @relation(fields: [assetId], references: [id], onDelete: Restrict)
+  assignedTo         Person                @relation(fields: [assignedToId], references: [id], onDelete: Restrict)
+  department         Department            @relation(fields: [departmentId], references: [id], onDelete: Restrict)
+  location           Location              @relation(fields: [locationId], references: [id], onDelete: Restrict)
+  actor              User                  @relation("AssignmentActor", fields: [assignedBy], references: [id], onDelete: Restrict)
+  returnRecord       AssetReturn?
+  createdAt          DateTime              @default(now())
+  updatedAt          DateTime              @updatedAt
+
   @@index([assetId, status])
   @@index([assignedToId, status])
   @@index([expectedReturnDate, status])
   @@map("asset_assignments")
 }
+
 model AssetReturn {
-  id String @id @default(uuid()) @db.Uuid
-  returnNo String @unique @db.VarChar(50)
-  assignmentId String @unique @db.Uuid
-  assetId String @db.Uuid
-  warehouseId String? @db.Uuid
-  locationId String @db.Uuid
-  returnedDate DateTime @default(now())
-  conditionIn String @db.VarChar(100)
-  outcome AssetReturnOutcome
-  note String?
-  returnedBy String @db.Uuid
-  assignment AssetAssignment @relation(fields: [assignmentId], references: [id], onDelete: Restrict)
-  asset Asset @relation(fields: [assetId], references: [id], onDelete: Restrict)
-  warehouse Warehouse? @relation(fields: [warehouseId], references: [id], onDelete: Restrict)
-  location Location @relation(fields: [locationId], references: [id], onDelete: Restrict)
-  actor User @relation("ReturnActor", fields: [returnedBy], references: [id], onDelete: Restrict)
-  createdAt DateTime @default(now())
+  id           String             @id @default(uuid()) @db.Uuid
+  returnNo     String             @unique @db.VarChar(50)
+  assignmentId String             @unique @db.Uuid
+  assetId      String             @db.Uuid
+  warehouseId  String?            @db.Uuid
+  locationId   String             @db.Uuid
+  returnedDate DateTime           @default(now())
+  conditionIn  String             @db.VarChar(100)
+  outcome      AssetReturnOutcome
+  note         String?
+  returnedBy   String             @db.Uuid
+  assignment   AssetAssignment    @relation(fields: [assignmentId], references: [id], onDelete: Restrict)
+  asset        Asset              @relation(fields: [assetId], references: [id], onDelete: Restrict)
+  warehouse    Warehouse?         @relation(fields: [warehouseId], references: [id], onDelete: Restrict)
+  location     Location           @relation(fields: [locationId], references: [id], onDelete: Restrict)
+  actor        User               @relation("ReturnActor", fields: [returnedBy], references: [id], onDelete: Restrict)
+  createdAt    DateTime           @default(now())
+
   @@index([assetId, returnedDate])
   @@map("asset_returns")
 }
+
 model AssetTransfer {
-  id String @id @default(uuid()) @db.Uuid
-  transferNo String @unique @db.VarChar(50)
-  assetId String @db.Uuid
-  fromLocationId String? @db.Uuid
-  toLocationId String @db.Uuid
-  fromWarehouseId String? @db.Uuid
-  toWarehouseId String? @db.Uuid
-  transferredDate DateTime @default(now())
-  condition String? @db.VarChar(100)
-  reason String @db.VarChar(1000)
-  transferredBy String @db.Uuid
-  asset Asset @relation(fields: [assetId], references: [id], onDelete: Restrict)
-  fromLocation Location? @relation("TransferFromLocation", fields: [fromLocationId], references: [id], onDelete: Restrict)
-  toLocation Location @relation("TransferToLocation", fields: [toLocationId], references: [id], onDelete: Restrict)
-  fromWarehouse Warehouse? @relation("TransferFromWarehouse", fields: [fromWarehouseId], references: [id], onDelete: Restrict)
-  toWarehouse Warehouse? @relation("TransferToWarehouse", fields: [toWarehouseId], references: [id], onDelete: Restrict)
-  actor User @relation("TransferActor", fields: [transferredBy], references: [id], onDelete: Restrict)
-  createdAt DateTime @default(now())
+  id              String     @id @default(uuid()) @db.Uuid
+  transferNo      String     @unique @db.VarChar(50)
+  assetId         String     @db.Uuid
+  fromLocationId  String?    @db.Uuid
+  toLocationId    String     @db.Uuid
+  fromWarehouseId String?    @db.Uuid
+  toWarehouseId   String?    @db.Uuid
+  transferredDate DateTime   @default(now())
+  condition       String?    @db.VarChar(100)
+  reason          String     @db.VarChar(1000)
+  transferredBy   String     @db.Uuid
+  asset           Asset      @relation(fields: [assetId], references: [id], onDelete: Restrict)
+  fromLocation    Location?  @relation("TransferFromLocation", fields: [fromLocationId], references: [id], onDelete: Restrict)
+  toLocation      Location   @relation("TransferToLocation", fields: [toLocationId], references: [id], onDelete: Restrict)
+  fromWarehouse   Warehouse? @relation("TransferFromWarehouse", fields: [fromWarehouseId], references: [id], onDelete: Restrict)
+  toWarehouse     Warehouse? @relation("TransferToWarehouse", fields: [toWarehouseId], references: [id], onDelete: Restrict)
+  actor           User       @relation("TransferActor", fields: [transferredBy], references: [id], onDelete: Restrict)
+  createdAt       DateTime   @default(now())
+
   @@index([assetId, transferredDate])
   @@map("asset_transfers")
 }
+
 model MaintenanceRecord {
-  id String @id @default(uuid()) @db.Uuid
-  maintenanceNo String @unique @db.VarChar(50)
-  assetId String @db.Uuid
-  warehouseId String? @db.Uuid
-  status MaintenanceStatus @default(OPEN)
-  openedAt DateTime @default(now())
-  completedAt DateTime?
-  issue String @db.VarChar(2000)
-  resolution String?
-  outcome MaintenanceOutcome?
-  cost Decimal? @db.Decimal(18, 2)
-  performedBy String @db.Uuid
-  asset Asset @relation(fields: [assetId], references: [id], onDelete: Restrict)
-  warehouse Warehouse? @relation(fields: [warehouseId], references: [id], onDelete: Restrict)
-  actor User @relation("MaintenanceActor", fields: [performedBy], references: [id], onDelete: Restrict)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id            String              @id @default(uuid()) @db.Uuid
+  maintenanceNo String              @unique @db.VarChar(50)
+  assetId       String              @db.Uuid
+  warehouseId   String?             @db.Uuid
+  status        MaintenanceStatus   @default(OPEN)
+  openedAt      DateTime            @default(now())
+  completedAt   DateTime?
+  issue         String              @db.VarChar(2000)
+  resolution    String?
+  outcome       MaintenanceOutcome?
+  cost          Decimal?            @db.Decimal(18, 2)
+  performedBy   String              @db.Uuid
+  asset         Asset               @relation(fields: [assetId], references: [id], onDelete: Restrict)
+  warehouse     Warehouse?          @relation(fields: [warehouseId], references: [id], onDelete: Restrict)
+  actor         User                @relation("MaintenanceActor", fields: [performedBy], references: [id], onDelete: Restrict)
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+
   @@index([assetId, status])
   @@map("maintenance_records")
 }
+
 model Incident {
-  id String @id @default(uuid()) @db.Uuid
-  incidentNo String @unique @db.VarChar(50)
-  title String @db.VarChar(250)
-  category IncidentCategory
-  status IncidentStatus @default(NEW)
-  priority IncidentPriority
-  impact IncidentImpact
-  urgency IncidentUrgency
-  description String
-  businessImpact String?
-  initialAssessment String?
-  containmentAction String?
-  resolution String?
-  rootCause String?
-  correctiveAction String?
-  preventiveAction String?
-  lessonsLearned String?
-  serviceName String? @db.VarChar(200)
-  reporterName String @db.VarChar(150)
-  reporterContact String? @db.VarChar(255)
-  reportedById String? @db.Uuid
-  assignedToId String? @db.Uuid
-  createdBy String @db.Uuid
-  departmentId String? @db.Uuid
-  locationId String? @db.Uuid
-  assetId String? @db.Uuid
-  affectedUsers Int @default(0)
-  downtimeMinutes Int @default(0)
-  isSecurityIncident Boolean @default(false)
-  isBusinessContinuityEvent Boolean @default(false)
-  detectedAt DateTime
-  reportedAt DateTime @default(now())
-  acknowledgedAt DateTime?
-  responseStartedAt DateTime?
-  resolvedAt DateTime?
-  closedAt DateTime?
-  dueAt DateTime?
-  slaResponseDueAt DateTime
-  slaResolutionDueAt DateTime
-  reporter User? @relation("IncidentReporter", fields: [reportedById], references: [id], onDelete: SetNull)
-  assignee User? @relation("IncidentAssignee", fields: [assignedToId], references: [id], onDelete: SetNull)
-  creator User @relation("IncidentCreator", fields: [createdBy], references: [id], onDelete: Restrict)
-  department Department? @relation(fields: [departmentId], references: [id], onDelete: Restrict)
-  location Location? @relation(fields: [locationId], references: [id], onDelete: Restrict)
-  asset Asset? @relation(fields: [assetId], references: [id], onDelete: Restrict)
-  activities IncidentActivity[]
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id                        String               @id @default(uuid()) @db.Uuid
+  incidentNo                String               @unique @db.VarChar(50)
+  title                     String               @db.VarChar(250)
+  category                  IncidentCategory
+  status                    IncidentStatus       @default(NEW)
+  priority                  IncidentPriority
+  impact                    IncidentImpact
+  urgency                   IncidentUrgency
+  description               String
+  businessImpact            String?
+  initialAssessment         String?
+  containmentAction         String?
+  resolution                String?
+  rootCause                 String?
+  correctiveAction          String?
+  preventiveAction          String?
+  lessonsLearned            String?
+  serviceName               String?              @db.VarChar(200)
+  reporterName              String               @db.VarChar(150)
+  reporterContact           String?              @db.VarChar(255)
+  reportedById              String?              @db.Uuid
+  assignedToId              String?              @db.Uuid
+  assignedDepartmentId      String?              @db.Uuid
+  createdBy                 String               @db.Uuid
+  departmentId              String?              @db.Uuid
+  locationId                String?              @db.Uuid
+  assetId                   String?              @db.Uuid
+  affectedUsers             Int                  @default(0)
+  downtimeMinutes           Int                  @default(0)
+  isSecurityIncident        Boolean              @default(false)
+  isBusinessContinuityEvent Boolean              @default(false)
+  detectedAt                DateTime
+  reportedAt                DateTime             @default(now())
+  acknowledgedAt            DateTime?
+  responseStartedAt         DateTime?
+  resolvedAt                DateTime?
+  closedAt                  DateTime?
+  dueAt                     DateTime?
+  slaResponseDueAt          DateTime
+  slaResolutionDueAt        DateTime
+  reporter                  User?                @relation("IncidentReporter", fields: [reportedById], references: [id], onDelete: SetNull)
+  assignee                  User?                @relation("IncidentAssignee", fields: [assignedToId], references: [id], onDelete: SetNull)
+  creator                   User                 @relation("IncidentCreator", fields: [createdBy], references: [id], onDelete: Restrict)
+  department                Department?          @relation("IncidentAffectedDepartment", fields: [departmentId], references: [id], onDelete: Restrict)
+  assignedDepartment        Department?          @relation("IncidentAssignedDepartment", fields: [assignedDepartmentId], references: [id], onDelete: Restrict)
+  location                  Location?            @relation(fields: [locationId], references: [id], onDelete: Restrict)
+  asset                     Asset?               @relation(fields: [assetId], references: [id], onDelete: Restrict)
+  activities                IncidentActivity[]
+  assignments               IncidentAssignment[]
+  createdAt                 DateTime             @default(now())
+  updatedAt                 DateTime             @updatedAt
+
   @@index([status, priority, reportedAt])
   @@index([category, reportedAt])
   @@index([departmentId, reportedAt])
+  @@index([assignedDepartmentId, assignedToId, status])
   @@index([assetId, reportedAt])
   @@map("incidents")
 }
+
+model IncidentAssignment {
+  id           String                 @id @default(uuid()) @db.Uuid
+  incidentId   String                 @db.Uuid
+  assignedToId String                 @db.Uuid
+  departmentId String                 @db.Uuid
+  assignedBy   String                 @db.Uuid
+  role         IncidentAssignmentRole @default(PRIMARY)
+  note         String?
+  assignedAt   DateTime               @default(now())
+  acceptedAt   DateTime?
+  acceptedById String?                 @db.Uuid
+  releasedAt   DateTime?
+  releasedById String?                 @db.Uuid
+  releaseReason String?
+  incident     Incident               @relation(fields: [incidentId], references: [id], onDelete: Cascade)
+  assignee     User                   @relation("IncidentAssignmentAssignee", fields: [assignedToId], references: [id], onDelete: Restrict)
+  department   Department             @relation(fields: [departmentId], references: [id], onDelete: Restrict)
+  actor        User                   @relation("IncidentAssignmentActor", fields: [assignedBy], references: [id], onDelete: Restrict)
+  acceptor     User?                  @relation("IncidentAssignmentAcceptor", fields: [acceptedById], references: [id], onDelete: Restrict)
+  releaser     User?                  @relation("IncidentAssignmentReleaser", fields: [releasedById], references: [id], onDelete: Restrict)
+  createdAt    DateTime               @default(now())
+
+  @@index([incidentId, assignedAt])
+  @@index([assignedToId, releasedAt])
+  @@map("incident_assignments")
+}
+
 model IncidentActivity {
-  id String @id @default(uuid()) @db.Uuid
-  incidentId String @db.Uuid
-  type String @db.VarChar(40)
-  note String
-  fromStatus IncidentStatus?
-  toStatus IncidentStatus?
-  performedBy String @db.Uuid
-  incident Incident @relation(fields: [incidentId], references: [id], onDelete: Cascade)
-  actor User @relation("IncidentActivityActor", fields: [performedBy], references: [id], onDelete: Restrict)
-  createdAt DateTime @default(now())
+  id          String          @id @default(uuid()) @db.Uuid
+  incidentId  String          @db.Uuid
+  type        String          @db.VarChar(40)
+  note        String
+  fromStatus  IncidentStatus?
+  toStatus    IncidentStatus?
+  performedBy String          @db.Uuid
+  incident    Incident        @relation(fields: [incidentId], references: [id], onDelete: Cascade)
+  actor       User            @relation("IncidentActivityActor", fields: [performedBy], references: [id], onDelete: Restrict)
+  createdAt   DateTime        @default(now())
+
   @@index([incidentId, createdAt])
   @@map("incident_activities")
 }
+
 model InventorySession {
-  id String @id @default(uuid()) @db.Uuid
-  inventoryNo String @unique @db.VarChar(50)
-  name String @db.VarChar(200)
-  status InventoryStatus @default(OPEN)
-  scopeDepartmentId String? @db.Uuid
-  scopeLocationId String? @db.Uuid
-  scopeWarehouseId String? @db.Uuid
-  scopeCategoryId String? @db.Uuid
-  startedAt DateTime @default(now())
-  closedAt DateTime?
-  cancelledAt DateTime?
-  createdBy String @db.Uuid
-  scopeDepartment Department? @relation(fields: [scopeDepartmentId], references: [id], onDelete: Restrict)
-  scopeLocation Location? @relation(fields: [scopeLocationId], references: [id], onDelete: Restrict)
-  scopeWarehouse Warehouse? @relation(fields: [scopeWarehouseId], references: [id], onDelete: Restrict)
-  scopeCategory AssetCategory? @relation(fields: [scopeCategoryId], references: [id], onDelete: Restrict)
-  creator User @relation("InventoryCreator", fields: [createdBy], references: [id], onDelete: Restrict)
-  items InventoryItem[]
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id                String          @id @default(uuid()) @db.Uuid
+  inventoryNo       String          @unique @db.VarChar(50)
+  name              String          @db.VarChar(200)
+  status            InventoryStatus @default(OPEN)
+  scopeDepartmentId String?         @db.Uuid
+  scopeLocationId   String?         @db.Uuid
+  scopeWarehouseId  String?         @db.Uuid
+  scopeCategoryId   String?         @db.Uuid
+  startedAt         DateTime        @default(now())
+  closedAt          DateTime?
+  cancelledAt       DateTime?
+  createdBy         String          @db.Uuid
+  scopeDepartment   Department?     @relation(fields: [scopeDepartmentId], references: [id], onDelete: Restrict)
+  scopeLocation     Location?       @relation(fields: [scopeLocationId], references: [id], onDelete: Restrict)
+  scopeWarehouse    Warehouse?      @relation(fields: [scopeWarehouseId], references: [id], onDelete: Restrict)
+  scopeCategory     AssetCategory?  @relation(fields: [scopeCategoryId], references: [id], onDelete: Restrict)
+  creator           User            @relation("InventoryCreator", fields: [createdBy], references: [id], onDelete: Restrict)
+  items             InventoryItem[]
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+
   @@index([status, startedAt])
   @@map("inventory_sessions")
 }
+
 model InventoryItem {
-  id String @id @default(uuid()) @db.Uuid
-  sessionId String @db.Uuid
-  assetId String @db.Uuid
-  expectedLocationId String? @db.Uuid
-  expectedCustodianId String? @db.Uuid
-  observedLocationId String? @db.Uuid
-  observedCustodianId String? @db.Uuid
-  scannedAt DateTime?
-  scannedBy String? @db.Uuid
-  result InventoryResult @default(PENDING)
-  note String?
-  session InventorySession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-  asset Asset @relation(fields: [assetId], references: [id], onDelete: Restrict)
-  expectedLocation Location? @relation("InventoryExpectedLocation", fields: [expectedLocationId], references: [id], onDelete: Restrict)
-  observedLocation Location? @relation("InventoryObservedLocation", fields: [observedLocationId], references: [id], onDelete: Restrict)
-  expectedCustodian Person? @relation("InventoryExpectedCustodian", fields: [expectedCustodianId], references: [id], onDelete: Restrict)
-  observedCustodian Person? @relation("InventoryObservedCustodian", fields: [observedCustodianId], references: [id], onDelete: Restrict)
-  scanner User? @relation("InventoryScanner", fields: [scannedBy], references: [id], onDelete: Restrict)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id                  String           @id @default(uuid()) @db.Uuid
+  sessionId           String           @db.Uuid
+  assetId             String           @db.Uuid
+  expectedLocationId  String?          @db.Uuid
+  expectedCustodianId String?          @db.Uuid
+  observedLocationId  String?          @db.Uuid
+  observedCustodianId String?          @db.Uuid
+  scannedAt           DateTime?
+  scannedBy           String?          @db.Uuid
+  result              InventoryResult  @default(PENDING)
+  note                String?
+  session             InventorySession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  asset               Asset            @relation(fields: [assetId], references: [id], onDelete: Restrict)
+  expectedLocation    Location?        @relation("InventoryExpectedLocation", fields: [expectedLocationId], references: [id], onDelete: Restrict)
+  observedLocation    Location?        @relation("InventoryObservedLocation", fields: [observedLocationId], references: [id], onDelete: Restrict)
+  expectedCustodian   Person?          @relation("InventoryExpectedCustodian", fields: [expectedCustodianId], references: [id], onDelete: Restrict)
+  observedCustodian   Person?          @relation("InventoryObservedCustodian", fields: [observedCustodianId], references: [id], onDelete: Restrict)
+  scanner             User?            @relation("InventoryScanner", fields: [scannedBy], references: [id], onDelete: Restrict)
+  createdAt           DateTime         @default(now())
+  updatedAt           DateTime         @updatedAt
+
   @@unique([sessionId, assetId])
   @@index([sessionId, result])
   @@map("inventory_items")
 }
+
 model AssetImportBatch {
-  id String @id @default(uuid()) @db.Uuid
-  sourceFileName String @db.VarChar(255)
-  status AssetImportStatus @default(STAGED)
-  totalRows Int
-  validRows Int @default(0)
-  invalidRows Int @default(0)
-  committedRows Int @default(0)
-  createdBy String @db.Uuid
-  committedAt DateTime?
-  rolledBackAt DateTime?
-  creator User @relation("ImportCreator", fields: [createdBy], references: [id], onDelete: Restrict)
-  rows AssetImportRow[]
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id             String            @id @default(uuid()) @db.Uuid
+  sourceFileName String            @db.VarChar(255)
+  status         AssetImportStatus @default(STAGED)
+  totalRows      Int
+  validRows      Int               @default(0)
+  invalidRows    Int               @default(0)
+  committedRows  Int               @default(0)
+  createdBy      String            @db.Uuid
+  committedAt    DateTime?
+  rolledBackAt   DateTime?
+  creator        User              @relation("ImportCreator", fields: [createdBy], references: [id], onDelete: Restrict)
+  rows           AssetImportRow[]
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+
   @@index([status, createdAt])
   @@map("asset_import_batches")
 }
+
 model AssetImportRow {
-  id String @id @default(uuid()) @db.Uuid
-  batchId String @db.Uuid
+  id        String               @id @default(uuid()) @db.Uuid
+  batchId   String               @db.Uuid
   rowNumber Int
-  payload Json
-  status AssetImportRowStatus
-  errors Json @default("[]")
-  assetId String? @db.Uuid
-  batch AssetImportBatch @relation(fields: [batchId], references: [id], onDelete: Cascade)
-  asset Asset? @relation(fields: [assetId], references: [id], onDelete: Restrict)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  payload   Json
+  status    AssetImportRowStatus
+  errors    Json                 @default("[]")
+  assetId   String?              @db.Uuid
+  batch     AssetImportBatch     @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  asset     Asset?               @relation(fields: [assetId], references: [id], onDelete: Restrict)
+  createdAt DateTime             @default(now())
+  updatedAt DateTime             @updatedAt
+
   @@unique([batchId, rowNumber])
   @@index([batchId, status])
   @@map("asset_import_rows")
 }
+
 model AssetHistory {
-  id String @id @default(uuid()) @db.Uuid
-  assetId String @db.Uuid
-  action AssetHistoryAction
-  fromUserId String? @db.Uuid
-  toUserId String? @db.Uuid
-  fromLocationId String? @db.Uuid
-  toLocationId String? @db.Uuid
-  referenceType String?
-  referenceId String? @db.Uuid
-  description String
-  performedBy String @db.Uuid
-  asset Asset @relation(fields: [assetId], references: [id])
-  actor User @relation("HistoryActor", fields: [performedBy], references: [id])
-  fromLocation Location? @relation("HistoryFromLocation", fields: [fromLocationId], references: [id])
-  toLocation Location? @relation("HistoryToLocation", fields: [toLocationId], references: [id])
-  createdAt DateTime @default(now())
+  id             String             @id @default(uuid()) @db.Uuid
+  assetId        String             @db.Uuid
+  action         AssetHistoryAction
+  fromUserId     String?            @db.Uuid
+  toUserId       String?            @db.Uuid
+  fromLocationId String?            @db.Uuid
+  toLocationId   String?            @db.Uuid
+  referenceType  String?
+  referenceId    String?            @db.Uuid
+  description    String
+  performedBy    String             @db.Uuid
+  asset          Asset              @relation(fields: [assetId], references: [id])
+  actor          User               @relation("HistoryActor", fields: [performedBy], references: [id])
+  fromLocation   Location?          @relation("HistoryFromLocation", fields: [fromLocationId], references: [id])
+  toLocation     Location?          @relation("HistoryToLocation", fields: [toLocationId], references: [id])
+  createdAt      DateTime           @default(now())
+
   @@index([assetId, createdAt])
   @@map("asset_history")
 }
+
 model Attachment {
-  id String @id @default(uuid()) @db.Uuid
-  entityType String @db.VarChar(30)
-  entityId String @db.Uuid
-  fileName String
+  id           String   @id @default(uuid()) @db.Uuid
+  entityType   String   @db.VarChar(30)
+  entityId     String   @db.Uuid
+  fileName     String
   originalName String
-  mimeType String
-  fileSize BigInt
-  storagePath String
-  description String?
-  uploadedBy String @db.Uuid
-  createdAt DateTime @default(now())
+  mimeType     String
+  fileSize     BigInt
+  storagePath  String
+  description  String?
+  uploadedBy   String   @db.Uuid
+  createdAt    DateTime @default(now())
+
   @@index([entityType, entityId])
   @@map("attachments")
 }
+
 model AuditLog {
-  id BigInt @id @default(autoincrement())
-  userId String? @db.Uuid
-  action String
+  id         BigInt   @id @default(autoincrement())
+  userId     String?  @db.Uuid
+  action     String
   entityType String
-  entityId String? @db.Uuid
-  oldValues Json?
-  newValues Json?
-  ipAddress String?
-  userAgent String?
-  createdAt DateTime @default(now())
+  entityId   String?  @db.Uuid
+  oldValues  Json?
+  newValues  Json?
+  ipAddress  String?
+  userAgent  String?
+  createdAt  DateTime @default(now())
+
   @@index([entityType, entityId, createdAt])
   @@map("audit_logs")
 }
+
 model ApplicationSetting {
-  key String @id @db.VarChar(50)
-  value Json
-  updatedBy String? @db.Uuid
+  key       String   @id @db.VarChar(50)
+  value     Json
+  updatedBy String?  @db.Uuid
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
   @@map("application_settings")
 }
+
 model Vendor {
-  id String @id @default(uuid()) @db.Uuid
-  code String @unique @db.VarChar(50)
-  name String @db.VarChar(200)
-  taxCode String? @db.VarChar(50)
-  category String @db.VarChar(150)
-  contact String @db.VarChar(150)
-  email String? @db.VarChar(255)
-  phone String? @db.VarChar(30)
-  address String?
+  id             String    @id @default(uuid()) @db.Uuid
+  code           String    @unique @db.VarChar(50)
+  name           String    @db.VarChar(200)
+  taxCode        String?   @db.VarChar(50)
+  category       String    @db.VarChar(150)
+  contact        String    @db.VarChar(150)
+  email          String?   @db.VarChar(255)
+  phone          String?   @db.VarChar(30)
+  address        String?
   certifications String?
-  status String @db.VarChar(30)
+  status         String    @db.VarChar(30)
   lastEvaluation DateTime? @db.Date
-  score Int @default(0)
-  scores Json @default("{}")
-  notes String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  score          Int       @default(0)
+  scores         Json      @default("{}")
+  notes          String?
+  digitalEntitlements DigitalEntitlement[]
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
   @@map("vendors")
+}
+
+model DigitalEntitlement {
+  id                    String                   @id @default(uuid()) @db.Uuid
+  code                  String                   @unique @db.VarChar(60)
+  name                  String                   @db.VarChar(250)
+  type                  DigitalEntitlementType
+  status                DigitalEntitlementStatus @default(ACTIVE)
+  productName           String?                  @db.VarChar(200)
+  edition               String?                  @db.VarChar(120)
+  subscriptionIdentifier String?                 @db.VarChar(255)
+  domainName            String?                  @db.VarChar(253)
+  commonName            String?                  @db.VarChar(253)
+  registrar             String?                  @db.VarChar(200)
+  issuer                String?                  @db.VarChar(200)
+  licenseMetric         String?                  @db.VarChar(80)
+  totalQuantity         Int                      @default(1)
+  startDate             DateTime?                @db.Date
+  expiryDate            DateTime?                @db.Date
+  autoRenew             Boolean                  @default(false)
+  renewalPeriodMonths   Int                      @default(12)
+  cancellationDeadline  DateTime?                @db.Date
+  purchaseCost          Decimal?                 @db.Decimal(18, 2)
+  renewalCost           Decimal?                 @db.Decimal(18, 2)
+  currency              String                   @default("VND") @db.VarChar(3)
+  purchaseOrderNo       String?                  @db.VarChar(100)
+  contractNo            String?                  @db.VarChar(100)
+  managementUrl         String?                  @db.VarChar(1000)
+  accountName           String?                  @db.VarChar(255)
+  secretReference       String?                  @db.VarChar(500)
+  technicalContact      String?                  @db.VarChar(255)
+  businessOwner         String?                  @db.VarChar(255)
+  notes                 String?
+  vendorId              String?                  @db.Uuid
+  ownerDepartmentId     String?                  @db.Uuid
+  ownerUserId           String?                  @db.Uuid
+  createdBy             String                   @db.Uuid
+  externalProvider      String?                  @db.VarChar(40)
+  externalTenantId      String?                  @db.VarChar(100)
+  externalSkuId         String?                  @db.VarChar(100)
+  externalSkuPartNumber String?                  @db.VarChar(150)
+  externalAssignedQuantity Int?
+  externalAvailableQuantity Int?
+  externalCapabilityStatus String?               @db.VarChar(40)
+  externalLastSyncedAt  DateTime?
+  vendor                Vendor?                  @relation(fields: [vendorId], references: [id], onDelete: Restrict)
+  ownerDepartment       Department?              @relation(fields: [ownerDepartmentId], references: [id], onDelete: Restrict)
+  owner                 User?                    @relation("DigitalEntitlementOwner", fields: [ownerUserId], references: [id], onDelete: Restrict)
+  creator               User                     @relation("DigitalEntitlementCreator", fields: [createdBy], references: [id], onDelete: Restrict)
+  assignments           DigitalAssignment[]
+  renewals              DigitalRenewal[]
+  alerts                RenewalAlert[]
+  microsoftAssignments  MicrosoftLicenseAssignment[]
+  createdAt             DateTime                 @default(now())
+  updatedAt             DateTime                 @updatedAt
+
+  @@index([type, status, expiryDate])
+  @@index([ownerDepartmentId, expiryDate])
+  @@index([vendorId])
+  @@unique([externalProvider, externalTenantId, externalSkuId])
+  @@map("digital_entitlements")
+}
+
+model MicrosoftLicenseAssignment {
+  id                String             @id @default(uuid()) @db.Uuid
+  entitlementId     String             @db.Uuid
+  externalUserId    String             @db.VarChar(100)
+  userPrincipalName String             @db.VarChar(255)
+  displayName       String?            @db.VarChar(200)
+  assignedByGroup   String?            @db.VarChar(100)
+  assignmentState   String?            @db.VarChar(40)
+  assignmentError   String?            @db.VarChar(100)
+  personId          String?            @db.Uuid
+  entitlement       DigitalEntitlement @relation(fields: [entitlementId], references: [id], onDelete: Cascade)
+  person             Person?           @relation(fields: [personId], references: [id], onDelete: SetNull)
+  lastSyncedAt       DateTime           @default(now())
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+
+  @@unique([entitlementId, externalUserId])
+  @@index([userPrincipalName])
+  @@index([personId])
+  @@map("microsoft_license_assignments")
+}
+
+model DigitalAssignment {
+  id             String                  @id @default(uuid()) @db.Uuid
+  entitlementId  String                  @db.Uuid
+  personId       String?                 @db.Uuid
+  assetId        String?                 @db.Uuid
+  departmentId   String?                 @db.Uuid
+  quantity       Int                     @default(1)
+  status         DigitalAssignmentStatus @default(ACTIVE)
+  assignedAt     DateTime                @default(now())
+  expectedEndAt  DateTime?               @db.Date
+  revokedAt      DateTime?
+  assignedBy     String                  @db.Uuid
+  revokedBy      String?                 @db.Uuid
+  assignmentNote String?
+  revokeReason   String?
+  entitlement    DigitalEntitlement      @relation(fields: [entitlementId], references: [id], onDelete: Restrict)
+  person         Person?                 @relation(fields: [personId], references: [id], onDelete: Restrict)
+  asset          Asset?                  @relation(fields: [assetId], references: [id], onDelete: Restrict)
+  department     Department?             @relation(fields: [departmentId], references: [id], onDelete: Restrict)
+  actor          User                    @relation("DigitalAssignmentActor", fields: [assignedBy], references: [id], onDelete: Restrict)
+  revoker        User?                   @relation("DigitalAssignmentRevoker", fields: [revokedBy], references: [id], onDelete: Restrict)
+  createdAt      DateTime                @default(now())
+  updatedAt      DateTime                @updatedAt
+
+  @@index([entitlementId, status])
+  @@index([personId, status])
+  @@index([assetId, status])
+  @@map("digital_assignments")
+}
+
+model DigitalRenewal {
+  id                 String               @id @default(uuid()) @db.Uuid
+  entitlementId      String               @db.Uuid
+  status             DigitalRenewalStatus @default(COMPLETED)
+  previousExpiryDate DateTime              @db.Date
+  newExpiryDate      DateTime              @db.Date
+  renewalDate        DateTime              @default(now()) @db.Date
+  amount             Decimal?              @db.Decimal(18, 2)
+  currency           String                @default("VND") @db.VarChar(3)
+  purchaseOrderNo    String?               @db.VarChar(100)
+  invoiceNo          String?               @db.VarChar(100)
+  approvedBy         String?               @db.Uuid
+  renewedBy          String                @db.Uuid
+  notes              String?
+  entitlement        DigitalEntitlement   @relation(fields: [entitlementId], references: [id], onDelete: Restrict)
+  approver           User?                @relation("DigitalRenewalApprover", fields: [approvedBy], references: [id], onDelete: Restrict)
+  actor              User                 @relation("DigitalRenewalActor", fields: [renewedBy], references: [id], onDelete: Restrict)
+  createdAt          DateTime             @default(now())
+
+  @@index([entitlementId, renewalDate])
+  @@map("digital_renewals")
+}
+
+model RenewalAlertPolicy {
+  id                    String                 @id @default(uuid()) @db.Uuid
+  type                  DigitalEntitlementType @unique
+  enabled               Boolean                @default(true)
+  warningDays           Int[]                  @default([90, 60, 30, 14, 7, 1, 0])
+  overdueEscalationDays Int[]                  @default([1, 3, 7])
+  recipients            String[]               @default([])
+  notifyOwner           Boolean                @default(true)
+  updatedBy             String?                @db.Uuid
+  updater               User?                  @relation("RenewalPolicyUpdater", fields: [updatedBy], references: [id], onDelete: Restrict)
+  alerts                RenewalAlert[]
+  createdAt             DateTime               @default(now())
+  updatedAt             DateTime               @updatedAt
+
+  @@map("renewal_alert_policies")
+}
+
+model RenewalAlert {
+  id               String             @id @default(uuid()) @db.Uuid
+  entitlementId    String             @db.Uuid
+  policyId          String             @db.Uuid
+  thresholdDays     Int
+  dueDate           DateTime           @db.Date
+  status            RenewalAlertStatus @default(OPEN)
+  firstTriggeredAt  DateTime           @default(now())
+  lastTriggeredAt   DateTime           @default(now())
+  acknowledgedAt    DateTime?
+  acknowledgedBy    String?            @db.Uuid
+  resolvedAt        DateTime?
+  note              String?
+  entitlement       DigitalEntitlement @relation(fields: [entitlementId], references: [id], onDelete: Cascade)
+  policy            RenewalAlertPolicy @relation(fields: [policyId], references: [id], onDelete: Restrict)
+  acknowledger      User?              @relation("RenewalAlertAcknowledger", fields: [acknowledgedBy], references: [id], onDelete: Restrict)
+  deliveries        RenewalNotificationDelivery[]
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+
+  @@unique([entitlementId, dueDate, thresholdDays])
+  @@index([status, dueDate])
+  @@map("renewal_alerts")
+}
+
+model RenewalNotificationConfiguration {
+  id                 String   @id @default(uuid()) @db.Uuid
+  enabled            Boolean  @default(false)
+  smtpHost           String?  @db.VarChar(255)
+  smtpPort           Int      @default(587)
+  secure             Boolean  @default(false)
+  username           String?  @db.VarChar(255)
+  passwordEncrypted  String?
+  fromName           String?  @db.VarChar(150)
+  fromAddress        String?  @db.VarChar(255)
+  replyTo            String?  @db.VarChar(255)
+  lastTestAt         DateTime?
+  lastTestOk         Boolean?
+  lastTestMessage    String?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@map("renewal_notification_configurations")
+}
+
+model RenewalNotificationDelivery {
+  id            String                     @id @default(uuid()) @db.Uuid
+  alertId       String                     @db.Uuid
+  alert         RenewalAlert               @relation(fields: [alertId], references: [id], onDelete: Cascade)
+  channel       String                     @default("EMAIL") @db.VarChar(20)
+  recipient     String                     @db.VarChar(255)
+  status        NotificationDeliveryStatus @default(PENDING)
+  attempts      Int                        @default(0)
+  nextAttemptAt DateTime                   @default(now())
+  sentAt        DateTime?
+  lastError     String?
+  createdAt     DateTime                   @default(now())
+  updatedAt     DateTime                   @updatedAt
+
+  @@unique([alertId, channel, recipient])
+  @@index([status, nextAttemptAt])
+  @@map("renewal_notification_deliveries")
 }

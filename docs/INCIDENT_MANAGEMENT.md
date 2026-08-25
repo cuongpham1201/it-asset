@@ -37,6 +37,16 @@ Hồ sơ gồm thời điểm phát hiện/báo cáo/phản hồi/khắc phục/
 
 Dữ liệu production được lưu trong PostgreSQL ở `incidents`, timeline ở `incident_activities`, và dấu vết kiểm toán ở `audit_logs`. Chính sách backup, retention và phục hồi phải được cấu hình theo yêu cầu pháp lý của tổ chức.
 
+## Phân công người xử lý
+
+- Chỉ tài khoản đang hoạt động, có vai trò `ADMIN` hoặc `IT`, và thuộc phòng ban đang hoạt động được đánh dấu `isIncidentResponseTeam` mới xuất hiện trong danh sách người xử lý.
+- `incidents.assignedToId` và `incidents.assignedDepartmentId` lưu người cùng bộ phận chịu trách nhiệm hiện tại để truy vấn nhanh.
+- `incident_assignments` lưu bất biến từng lần phân công/điều phối lại: người nhận, bộ phận tại thời điểm nhận, người phân công, vai trò, thời điểm nhận, chấp nhận và kết thúc.
+- PostgreSQL trigger chặn gán sai bộ phận ngay cả khi request không đi qua API, đồng thời không cho vô hiệu hóa/chuyển phòng ban người đang xử lý sự cố mở trước khi điều phối lại.
+- Khi chuyển sang `ACKNOWLEDGED` hoặc `IN_PROGRESS`, hồ sơ bắt buộc đã có người xử lý hợp lệ. Khi đóng hoặc hủy, bản ghi phân công đang mở được kết thúc nhưng lịch sử không bị xóa.
+
+Phòng ban IT/CNTT/ICT được migration nhận diện ban đầu. Admin có thể cấu hình cờ đội xử lý sự cố qua API danh mục phòng ban; tổ chức có nhiều đội IT có thể bật cờ cho nhiều phòng ban.
+
 ## Thống kê
 
 API và giao diện hỗ trợ kỳ tuần, tháng và năm: tổng sự cố, hồ sơ đang mở, P1/P2, đã khắc phục, quá SLA, tổng downtime, thời gian phản hồi/khắc phục trung bình, tỷ lệ đạt SLA, xu hướng và phân loại sự cố.

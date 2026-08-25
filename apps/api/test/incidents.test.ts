@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { assertIncidentTransition,incidentPriority,incidentSla } from '../src/modules/incidents/incidents.rules'
+import { assertIncidentTransition,incidentPriority,incidentSla,incidentStatusRequiresAssignee,isEligibleIncidentOperator } from '../src/modules/incidents/incidents.rules'
 
 test('incident priority is calculated from impact and urgency',()=>{
   assert.equal(incidentPriority('CRITICAL','HIGH'),'P1')
@@ -20,4 +20,13 @@ test('incident workflow prevents skipping assessment and closure stages',()=>{
 test('P1 SLA is stricter than P4',()=>{
   assert.ok(incidentSla('P1').responseMinutes<incidentSla('P4').responseMinutes)
   assert.ok(incidentSla('P1').resolutionMinutes<incidentSla('P4').resolutionMinutes)
+})
+
+test('incident processing requires an assigned IT response operator',()=>{
+  assert.equal(incidentStatusRequiresAssignee('NEW'),false)
+  assert.equal(incidentStatusRequiresAssignee('ACKNOWLEDGED'),true)
+  assert.equal(incidentStatusRequiresAssignee('IN_PROGRESS'),true)
+  assert.equal(isEligibleIncidentOperator({role:'IT',status:'ACTIVE',department:{status:'ACTIVE',isIncidentResponseTeam:true}}),true)
+  assert.equal(isEligibleIncidentOperator({role:'ADMIN',status:'ACTIVE',department:{status:'ACTIVE',isIncidentResponseTeam:false}}),false)
+  assert.equal(isEligibleIncidentOperator({role:'IT',status:'INACTIVE',department:{status:'ACTIVE',isIncidentResponseTeam:true}}),false)
 })

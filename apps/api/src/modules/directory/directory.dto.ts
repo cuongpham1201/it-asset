@@ -15,6 +15,7 @@ export class SaveDirectoryConfigurationDto{
   @IsBoolean() useTls!:boolean
   @IsIn(directorySchedules) schedule!:typeof directorySchedules[number]
   @IsBoolean() syncDisabled!:boolean
+  @IsBoolean() syncLicenses!:boolean
   @IsOptional() @IsString() @MaxLength(10000) groupMapping?:string
   @IsString() @MaxLength(100) departmentAttribute!:string
   @IsString() @MaxLength(100) emailAttribute!:string

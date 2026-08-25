@@ -20,6 +20,10 @@ Chỉ Admin có quyền đọc, sửa, kiểm tra hoặc chạy đồng bộ. Se
 
 ## Microsoft 365 / Entra ID
 
+Ngoài danh bạ người dùng, Admin có thể bật **Đồng bộ license**. AssetFlow gọi Microsoft Graph theo chế độ chỉ đọc để lấy `subscribedSkus`, số seat đã dùng/còn trống và `assignedLicenses` của người dùng. Cần Application permissions `User.Read.All`, `GroupMember.Read.All`, `LicenseAssignment.Read.All` và Admin consent.
+
+AssetFlow không tự cấp hoặc thu hồi Microsoft 365 license. Các thao tác đó vẫn làm tại Microsoft 365 Admin Center; lần đồng bộ sau sẽ cập nhật lại sổ. Graph không trả ngày gia hạn/chi phí hợp đồng nên IT khai báo các trường đó trong phân hệ License & Gia hạn.
+
 1. Tạo App registration trong Microsoft Entra admin center.
 2. Ghi lại Tenant ID và Application (client) ID.
 3. Tạo client secret; lưu value ngay khi tạo.

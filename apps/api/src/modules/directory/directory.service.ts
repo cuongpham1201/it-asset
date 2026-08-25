@@ -41,10 +41,10 @@ export class DirectoryService implements OnModuleInit,OnModuleDestroy{
     const existing=await this.db.directoryConfiguration.findUnique({where:{provider}})
     const secret=body.secret?.trim()?this.crypto.encrypt(body.secret.trim()):existing?.secretEncrypted
     if(body.enabled&&!secret)throw new BadRequestException('Phải nhập client secret hoặc mật khẩu bind trước khi bật đồng bộ')
-    const data={enabled:body.enabled,tenantId:this.trim(body.tenantId),clientId:this.trim(body.clientId),ldapUrl:this.trim(body.ldapUrl),baseDn:this.trim(body.baseDn),bindDn:this.trim(body.bindDn),caCertificate:this.trim(body.caCertificate),secretEncrypted:secret,userFilter:this.trim(body.userFilter),useTls:body.useTls,schedule:body.schedule,syncDisabled:body.syncDisabled,groupMapping:this.mapping(body.groupMapping),departmentAttribute:this.attribute(body.departmentAttribute),emailAttribute:this.attribute(body.emailAttribute),employeeCodeAttribute:this.attribute(body.employeeCodeAttribute),usernameAttribute:this.attribute(body.usernameAttribute)}
+    const data={enabled:body.enabled,tenantId:this.trim(body.tenantId),clientId:this.trim(body.clientId),ldapUrl:this.trim(body.ldapUrl),baseDn:this.trim(body.baseDn),bindDn:this.trim(body.bindDn),caCertificate:this.trim(body.caCertificate),secretEncrypted:secret,userFilter:this.trim(body.userFilter),useTls:body.useTls,schedule:body.schedule,syncDisabled:body.syncDisabled,syncLicenses:provider==='M365'&&body.syncLicenses,groupMapping:this.mapping(body.groupMapping),departmentAttribute:this.attribute(body.departmentAttribute),emailAttribute:this.attribute(body.emailAttribute),employeeCodeAttribute:this.attribute(body.employeeCodeAttribute),usernameAttribute:this.attribute(body.usernameAttribute)}
     this.validateConfiguration(provider,data)
     const saved=await this.db.directoryConfiguration.upsert({where:{provider},update:data,create:{provider,...data}})
-    await this.db.auditLog.create({data:{userId:actorId,action:'DIRECTORY_CONFIG_UPDATED',entityType:'DirectoryConfiguration',entityId:saved.id,newValues:{provider,enabled:body.enabled,schedule:body.schedule,useTls:body.useTls,syncDisabled:body.syncDisabled,secretChanged:Boolean(body.secret?.trim())}}})
+    await this.db.auditLog.create({data:{userId:actorId,action:'DIRECTORY_CONFIG_UPDATED',entityType:'DirectoryConfiguration',entityId:saved.id,newValues:{provider,enabled:body.enabled,schedule:body.schedule,useTls:body.useTls,syncDisabled:body.syncDisabled,syncLicenses:data.syncLicenses,secretChanged:Boolean(body.secret?.trim())}}})
     return {data:this.response(saved)}
   }
 
@@ -75,6 +75,7 @@ export class DirectoryService implements OnModuleInit,OnModuleDestroy{
     try{
       const users=provider==='M365'?await this.graphUsers(config,secret):await this.ldapUsers(config,secret)
       const counters=await this.persistUsers(provider,config,users)
+      if(provider==='M365'&&config.syncLicenses){const actor=await this.db.user.findFirst({where:{OR:[{username:triggeredBy},{role:'ADMIN',status:'ACTIVE'}]},orderBy:{role:'asc'},select:{id:true,username:true}});if(actor)await this.syncMicrosoftLicenses(actor)}
       const finished=await this.db.directorySyncRun.update({where:{id:run.id},data:{status:'SUCCESS',finishedAt:new Date(),...counters}})
       await this.db.directoryConfiguration.update({where:{id:config.id},data:{lastSyncAt:new Date()}})
       return {data:finished}
@@ -90,6 +91,36 @@ export class DirectoryService implements OnModuleInit,OnModuleDestroy{
     const memberships=new Map<string,string[]>()
     if(groupNames.length){const groups=await this.graphAll('https://graph.microsoft.com/v1.0/groups?$select=id,displayName&$top=999',token);for(const group of groups.filter((x:any)=>groupNames.includes(x.displayName))){const members=await this.graphAll(`https://graph.microsoft.com/v1.0/groups/${encodeURIComponent(group.id)}/members?$select=id&$top=999`,token);for(const member of members)memberships.set(member.id,[...(memberships.get(member.id)||[]),group.displayName])}}
     return rawUsers.map((user:any):ExternalUser=>({externalId:user.id,username:user.userPrincipalName?.split('@')[0]||`entra-${user.id.slice(0,8)}`,fullName:user.displayName||user.userPrincipalName,email:user.mail||user.userPrincipalName,employeeCode:user.employeeId||`ENTRA-${user.id.replace(/-/g,'').slice(0,12)}`,department:user.department||undefined,enabled:user.accountEnabled!==false,groups:memberships.get(user.id)||[]}))
+  }
+
+  async testMicrosoftLicenses(){
+    const {provider,config,secret}=await this.getConfigured('M365');if(provider!=='M365')throw new BadRequestException('Microsoft 365 chưa được cấu hình')
+    try{const token=await this.graphToken(config,secret),payload=await this.graphJson('https://graph.microsoft.com/v1.0/subscribedSkus?$select=id,skuId,skuPartNumber,consumedUnits,prepaidUnits,capabilityStatus',token);return {ok:true,skuCount:(payload.value||[]).length,message:`Kết nối thành công. Đọc được ${(payload.value||[]).length} SKU Microsoft 365.`}}
+    catch(error){throw new BadRequestException(`Không thể đọc license Microsoft 365: ${this.safeError(error,secret)}`)}
+  }
+
+  async syncMicrosoftLicenses(actor:{id:string;username:string}){
+    const {config,secret}=await this.getConfigured('M365'),now=new Date()
+    try{
+      const token=await this.graphToken(config,secret)
+      const [skus,users]=await Promise.all([
+        this.graphAll('https://graph.microsoft.com/v1.0/subscribedSkus?$select=id,skuId,skuPartNumber,consumedUnits,prepaidUnits,capabilityStatus',token),
+        this.graphAll('https://graph.microsoft.com/v1.0/users?$select=id,displayName,userPrincipalName,mail,assignedLicenses,licenseAssignmentStates&$top=999',token),
+      ])
+      let assignments=0,matchedPeople=0,unmatchedPeople=0
+      for(const sku of skus){
+        const total=Number(sku.prepaidUnits?.enabled||0),consumed=Number(sku.consumedUnits||0),externalSkuId=String(sku.skuId),part=String(sku.skuPartNumber||externalSkuId)
+        const existing=await this.db.digitalEntitlement.findUnique({where:{externalProvider_externalTenantId_externalSkuId:{externalProvider:'MICROSOFT_365',externalTenantId:config.tenantId!,externalSkuId}}})
+        const entitlement=await this.db.digitalEntitlement.upsert({where:{externalProvider_externalTenantId_externalSkuId:{externalProvider:'MICROSOFT_365',externalTenantId:config.tenantId!,externalSkuId}},create:{code:`M365-${externalSkuId.replace(/-/g,'').slice(0,12).toUpperCase()}`,name:part,type:'LICENSE',status:'ACTIVE',productName:part,totalQuantity:Math.max(total,consumed,1),currency:'VND',createdBy:actor.id,externalProvider:'MICROSOFT_365',externalTenantId:config.tenantId!,externalSkuId,externalSkuPartNumber:part,externalAssignedQuantity:consumed,externalAvailableQuantity:Math.max(0,total-consumed),externalCapabilityStatus:String(sku.capabilityStatus||''),externalLastSyncedAt:now},update:{name:existing?.name||part,productName:existing?.productName||part,totalQuantity:Math.max(total,consumed,1),externalSkuPartNumber:part,externalAssignedQuantity:consumed,externalAvailableQuantity:Math.max(0,total-consumed),externalCapabilityStatus:String(sku.capabilityStatus||''),externalLastSyncedAt:now}})
+        const seen:string[]=[]
+        for(const user of users){const assigned=(user.assignedLicenses||[]).some((item:any)=>String(item.skuId).toLowerCase()===externalSkuId.toLowerCase());if(!assigned)continue;seen.push(user.id);assignments++;const email=String(user.mail||user.userPrincipalName||'').toLowerCase(),person=await this.db.person.findFirst({where:{OR:[{source:'ENTRA_ID',externalId:user.id},...(email?[{email}]:[])]}});if(person)matchedPeople++;else unmatchedPeople++;const state=(user.licenseAssignmentStates||[]).find((item:any)=>String(item.skuId).toLowerCase()===externalSkuId.toLowerCase());await this.db.microsoftLicenseAssignment.upsert({where:{entitlementId_externalUserId:{entitlementId:entitlement.id,externalUserId:user.id}},create:{entitlementId:entitlement.id,externalUserId:user.id,userPrincipalName:String(user.userPrincipalName||email),displayName:user.displayName,assignedByGroup:state?.assignedByGroup||null,assignmentState:state?.state||'Active',assignmentError:state?.error||null,personId:person?.id,lastSyncedAt:now},update:{userPrincipalName:String(user.userPrincipalName||email),displayName:user.displayName,assignedByGroup:state?.assignedByGroup||null,assignmentState:state?.state||'Active',assignmentError:state?.error||null,personId:person?.id,lastSyncedAt:now}})}
+        await this.db.microsoftLicenseAssignment.deleteMany({where:{entitlementId:entitlement.id,...(seen.length?{externalUserId:{notIn:seen}}:{})}})
+      }
+      const message=`Đã đồng bộ ${skus.length} SKU, ${assignments} lượt cấp license; ${unmatchedPeople} lượt chưa khớp danh bạ.`
+      await this.db.directoryConfiguration.update({where:{id:config.id},data:{lastLicenseSyncAt:now,lastLicenseSyncStatus:'SUCCESS',lastLicenseSyncMessage:message}})
+      await this.db.auditLog.create({data:{userId:actor.id,action:'M365_LICENSES_SYNCED',entityType:'DirectoryConfiguration',entityId:config.id,newValues:{skus:skus.length,assignments,matchedPeople,unmatchedPeople} as Prisma.InputJsonValue}})
+      return {ok:true,skus:skus.length,assignments,matchedPeople,unmatchedPeople,message}
+    }catch(error){const message=this.safeError(error,secret);await this.db.directoryConfiguration.update({where:{id:config.id},data:{lastLicenseSyncAt:now,lastLicenseSyncStatus:'FAILED',lastLicenseSyncMessage:message}});throw new BadRequestException(`Đồng bộ license Microsoft 365 thất bại: ${message}`)}
   }
 
   private tlsOptions(config:DirectoryConfiguration){return {rejectUnauthorized:true,minVersion:'TLSv1.2' as const,ca:config.caCertificate?[config.caCertificate]:undefined}}

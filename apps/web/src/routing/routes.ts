@@ -11,6 +11,7 @@ export const pageRoutes: Record<string,string> = {
   'Kho & Vị trí':'/warehouses',
   'Mua sắm & PO':'/procurement',
   'Nhà cung cấp':'/vendors',
+  'License & Gia hạn':'/renewals',
   'Bảo trì & Sự cố':'/maintenance',
   'Báo cáo':'/reports',
   'Cấu hình hệ thống':'/settings',
@@ -25,5 +26,7 @@ export const pathForPage=(page:string)=>pageRoutes[page]||`/${encodeURIComponent
 export const pageForPath=(path:string)=>{
   if(path.startsWith('/assets/'))return 'Sổ tài sản'
   if(path==='/transfers')return 'Cấp phát & Thu hồi'
+  const decoded=decodeURIComponent(path).toLocaleLowerCase('vi-VN')
+  if(decoded==='/license & gia hạn'||decoded==='/license và gia hạn')return 'License & Gia hạn'
   return normalizedEntries.find(([,route])=>route===path)?.[0]||'Tổng quan'
 }
