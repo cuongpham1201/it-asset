@@ -454,6 +454,8 @@ export const featureTranslations: UiTranslation[] = [
   ['Thêm người dùng', 'Add user'],
   ['Thêm tài khoản local hoặc theo dõi tài khoản được đồng bộ từ Microsoft 365 và LDAP.', 'Add local accounts or track accounts synchronized from Microsoft 365 and LDAP.'],
   ['Tạo tài khoản local', 'Create local account'],
+  ['Đang tải phòng ban...', 'Loading departments...'],
+  ['Chưa có phòng ban hoạt động', 'No active departments'],
   ['Các trường có dấu * là bắt buộc. Tài khoản phải đổi mật khẩu ngay lần đăng nhập đầu tiên.', 'Fields marked * are required. The account must change its password at first sign-in.'],
   ['Tên đăng nhập *', 'Username *'],
   ['Vai trò *', 'Role *'],
