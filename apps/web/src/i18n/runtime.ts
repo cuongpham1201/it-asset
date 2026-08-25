@@ -1,4 +1,5 @@
 import { useEffect } from 'react'
+import { featureTranslations } from './feature-catalog'
 
 // Từ điển giao diện tập trung. Chỉ dịch nhãn hệ thống; không đụng tới mã, tên người và dữ liệu doanh nghiệp.
 const viToEn: Array<[string,string]> = [
@@ -329,25 +330,32 @@ const viToEn: Array<[string,string]> = [
   ['Cài đặt','Settings'],
   ['Trợ giúp','Help'],
   ['Tổng quan','Overview'],
+  ['Báo cáo','Reports'],
   ['Trang chủ','Home'],
+  // These are localized only when the installation still uses AssetFlow's
+  // built-in placeholders. Real company and person names remain untouched.
+  ['Công ty của bạn','Your company'],
+  ['Quản trị viên','Administrator'],
+  ['Quản lý tài sản','Asset management'],
   ['TÀI SẢN','ASSETS'],
   ['NGHIỆP VỤ','OPERATIONS'],
   ['BÁO CÁO','REPORTING'],
   ['CÔNG CỤ','TOOLS'],
+  ...featureTranslations.map(([source, target]): [string, string] => [source, target]),
 ]
 
-const viToEnByLength=[...viToEn].sort((a,b)=>b[0].length-a[0].length)
+const viToEnExact=new Map(viToEn.map(([source,target])=>[source.trim(),target]))
 const originalText=new WeakMap<Node,string>()
 const renderedText=new WeakMap<Node,string>()
 const originalAttributes=new WeakMap<Element,Map<string,string>>()
 const renderedAttributes=new WeakMap<Element,Map<string,string>>()
 
-function translateText(value:string,language:string){
+export function translateUiText(value:string,language:string){
   if(language!=='en-US')return value
   const leading=value.match(/^\s*/)?.[0]||''
   const trailing=value.match(/\s*$/)?.[0]||''
   const content=value.trim()
-  const exact=viToEnByLength.find(([source])=>source.trim()===content)?.[1]
+  const exact=viToEnExact.get(content)
   if(exact)return `${leading}${exact}${trailing}`
   const countPatterns:Array<[RegExp,(match:RegExpMatchArray)=>string]>=[
     [/^(\d+) tài sản$/,match=>`${match[1]} assets`],
@@ -359,6 +367,10 @@ function translateText(value:string,language:string){
     [/^Trang (\d+)\/(\d+)$/,match=>`Page ${match[1]}/${match[2]}`],
     [/^Mua (.+)$/,match=>`Purchased ${match[1]}`],
     [/^Cập nhật (.+)$/,match=>`Updated ${match[1]}`],
+    [/^Đợt (.+) · (.+) · (.+) đến (.+)$/,match=>`Inventory session ${match[1]} · ${match[2]} · ${match[3]} to ${match[4]}`],
+    [/^(\d+) giờ (\d+) phút$/,match=>`${match[1]}h ${match[2]}m`],
+    [/^(\d+) giờ$/,match=>`${match[1]}h`],
+    [/^(\d+) phút$/,match=>`${match[1]}m`],
   ]
   for(const [pattern,render] of countPatterns){const match=content.match(pattern);if(match)return `${leading}${render(match)}${trailing}`}
   return value
@@ -377,7 +389,7 @@ function translateRoot(root:ParentNode,language:string){
     const previousRendered=renderedText.get(node)
     if(!originalText.has(node)||(previousRendered!==undefined&&current!==previousRendered))originalText.set(node,current)
     const source=originalText.get(node)||''
-    const next=language==='en-US'?translateText(source,language):source
+    const next=language==='en-US'?translateUiText(source,language):source
     renderedText.set(node,next)
     if(next!==node.nodeValue)node.nodeValue=next
   }
@@ -391,7 +403,7 @@ function translateRoot(root:ParentNode,language:string){
       const previousRendered=rendered.get(attribute)
       if(!originals.has(attribute)||(previousRendered!==undefined&&value!==previousRendered))originals.set(attribute,value)
       const source=originals.get(attribute)||value
-      const next=language==='en-US'?translateText(source,language):source
+      const next=language==='en-US'?translateUiText(source,language):source
       originals.set(attribute,source);rendered.set(attribute,next)
       originalAttributes.set(element,originals);renderedAttributes.set(element,rendered)
       if(next!==value)element.setAttribute(attribute,next)
