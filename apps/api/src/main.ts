@@ -15,6 +15,7 @@ async function bootstrap(){
   configureRuntimeSecrets()
   const origins=(process.env.CORS_ORIGIN||'http://localhost:5173').split(',').map(value=>value.trim()).filter(Boolean)
   if(process.env.NODE_ENV==='production'&&origins.includes('*'))throw new Error('CORS_ORIGIN cannot contain * in production')
+  if(process.env.NODE_ENV==='production'&&process.env.COOKIE_SECURE!=='true'&&process.env.ALLOW_INSECURE_COOKIES!=='true')throw new Error('COOKIE_SECURE must be true in production. Set ALLOW_INSECURE_COOKIES=true to allow plaintext-HTTP cookies on a trusted isolated LAN only.')
   const app=await NestFactory.create(AppModule,{cors:false,bodyParser:false})
   const bodyLimit=process.env.MAX_JSON_BODY||'5mb';app.use(json({limit:bodyLimit}),urlencoded({extended:false,limit:bodyLimit}))
   if(process.env.TRUST_PROXY==='true')app.getHttpAdapter().getInstance().set('trust proxy',1)

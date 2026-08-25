@@ -33,7 +33,11 @@ services:
       PORT: 3000
       APP_VERSION: ${ASSETFLOW_VERSION:-edge}
       CORS_ORIGIN: ${APP_URL:-http://localhost:8080}
+      # UAT/pilot over plaintext HTTP on a trusted isolated LAN only.
+      # For any Internet-facing or real-domain deploy use infra/docker/production/
+      # (COOKIE_SECURE defaults to true there) instead of setting these two.
       COOKIE_SECURE: "false"
+      ALLOW_INSECURE_COOKIES: "true"
       SESSION_TTL_HOURS: ${SESSION_TTL_HOURS:-12}
       INITIAL_ADMIN_PASSWORD: ${INITIAL_ADMIN_PASSWORD:-}
       TZ: ${TZ:-Asia/Ho_Chi_Minh}
