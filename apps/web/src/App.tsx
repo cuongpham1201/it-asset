@@ -24,6 +24,7 @@ import { useRuntimeI18n } from './i18n/runtime'
 import { findAssetByScannedValue } from './features/scanner/scan-lookup'
 import { countDashboardLabels, dashboardLabelsEqual } from './features/dashboard/dashboard-metrics'
 import { DiscoveryCenter } from './features/discovery/DiscoveryCenter'
+import { IncidentManagement } from './features/incidents/IncidentManagement'
 
 const money = (value: number) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(value)
 const compactMoney = (value: number) => value >= 1_000_000_000 ? `${(value / 1_000_000_000).toFixed(1)} tỷ` : `${Math.round(value / 1_000_000)} tr`
@@ -152,7 +153,7 @@ const apiErrorMessage=(error:unknown)=>error instanceof Error?error.message:'Kh�
 const navSections: Array<{title:string;items:Array<{label:string;icon:typeof Box;count?:string}>}>=[
   {title:'',items:[{label:'Tổng quan',icon:LayoutDashboard}]},
   {title:'TÀI SẢN',items:[{label:'Sổ tài sản',icon:Box},{label:'Cấp phát & Thu hồi',icon:UserPlus},{label:'Nhập kho',icon:ArrowDownRight},{label:'Kho & Vị trí',icon:Warehouse},{label:'Kiểm kê',icon:ClipboardCheck}]},
-  {title:'NGHIỆP VỤ',items:[{label:'Mua sắm & PO',icon:ShoppingCart},{label:'Nhà cung cấp',icon:Building2},{label:'Bảo trì & Sự cố',icon:Wrench,count:'5'},{label:'Xuất kho',icon:ArrowUpRight}]},
+  {title:'NGHIỆP VỤ',items:[{label:'Mua sắm & PO',icon:ShoppingCart},{label:'Nhà cung cấp',icon:Building2},{label:'Bảo trì & Sự cố',icon:Wrench},{label:'Xuất kho',icon:ArrowUpRight}]},
   {title:'BÁO CÁO',items:[{label:'Báo cáo',icon:BarChart3},{label:'Lịch sử / Audit',icon:History}]},
   {title:'CÔNG CỤ',items:[{label:'Barcode / QR',icon:ScanLine},{label:'Khám phá & Agent',icon:Wifi}]},
 ]
@@ -904,6 +905,7 @@ export default function App() {
   else if(page==='Lịch sử / Audit') content=<TransactionHistory transactions={scopedTransactions}/>
   else if(page==='Barcode / QR'||page==='Nhập kho') content=<BarcodeCenter key={page} assets={scopedAssets} initialMode={page==='Nhập kho'?'manual':'lookup'} departmentOptions={departmentOptions} warehouseOptions={env.demoMode?siteOptions:referenceData.warehouses.map(item=>item.name)} onBarcode={setBarcodeAsset} onAssign={setAssignmentAsset}/>
   else if(page==='Khám phá & Agent'&&['Admin','IT'].includes(currentUser.role)) content=<DiscoveryCenter role={currentUser.role} categories={referenceData.categories} warehouses={referenceData.warehouses} demoMode={env.demoMode} onAssetCreated={refreshServerData}/>
+  else if(page==='Bảo trì & Sự cố'&&['Admin','IT'].includes(currentUser.role)) content=<IncidentManagement assets={scopedAssets} demoMode={env.demoMode} currentUserName={currentUser.name}/>
   else if(page==='Cấu hình hệ thống'&&isAdmin) content=<AdminSettings departments={departmentList} sites={siteList} assets={assets} regional={regional} branding={branding} email={emailSettings} onSaveRegional={saveRegionalSetting} onSaveBranding={saveBrandingSetting} onSaveEmail={saveEmailSetting} saveDepartment={saveDepartment} removeDepartment={removeDepartment} saveSite={saveSite} removeSite={removeSite}/>
   else if(page==='Tùy chỉnh thương hiệu'&&isAdmin) content=<BrandingConfiguration settings={branding} onSave={saveBrandingSetting}/>
   else if(page==='Cấu hình email'&&isAdmin) content=<EmailConfiguration settings={emailSettings} onSave={saveEmailSetting}/>

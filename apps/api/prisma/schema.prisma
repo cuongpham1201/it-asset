@@ -63,6 +63,44 @@ enum MaintenanceOutcome {
   BROKEN
   DISPOSED
 }
+enum IncidentCategory {
+  POWER
+  NETWORK
+  MALWARE
+  HARDWARE
+  SOFTWARE
+  SECURITY
+  ACCESS
+  CLOUD
+  TELEPHONY
+  OTHER
+}
+enum IncidentStatus {
+  NEW
+  ACKNOWLEDGED
+  IN_PROGRESS
+  MONITORING
+  RESOLVED
+  CLOSED
+  CANCELLED
+}
+enum IncidentPriority {
+  P1
+  P2
+  P3
+  P4
+}
+enum IncidentImpact {
+  CRITICAL
+  HIGH
+  MEDIUM
+  LOW
+}
+enum IncidentUrgency {
+  HIGH
+  MEDIUM
+  LOW
+}
 enum InventoryStatus {
   OPEN
   CLOSED
@@ -113,6 +151,7 @@ model Department {
   assets Asset[]
   assignments AssetAssignment[]
   inventorySessions InventorySession[]
+  incidents Incident[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   @@map("departments")
@@ -140,6 +179,10 @@ model User {
   returnsPerformed AssetReturn[] @relation("ReturnActor")
   transfersPerformed AssetTransfer[] @relation("TransferActor")
   maintenancePerformed MaintenanceRecord[] @relation("MaintenanceActor")
+  incidentsReported Incident[] @relation("IncidentReporter")
+  incidentsAssigned Incident[] @relation("IncidentAssignee")
+  incidentsCreated Incident[] @relation("IncidentCreator")
+  incidentActivities IncidentActivity[] @relation("IncidentActivityActor")
   inventorySessions InventorySession[] @relation("InventoryCreator")
   inventoryScans InventoryItem[] @relation("InventoryScanner")
   importBatches AssetImportBatch[] @relation("ImportCreator")
@@ -255,6 +298,7 @@ model Location {
   transfersFrom AssetTransfer[] @relation("TransferFromLocation")
   transfersTo AssetTransfer[] @relation("TransferToLocation")
   inventorySessions InventorySession[]
+  incidents Incident[]
   inventoryExpectedItems InventoryItem[] @relation("InventoryExpectedLocation")
   inventoryObservedItems InventoryItem[] @relation("InventoryObservedLocation")
   createdAt DateTime @default(now())
@@ -378,6 +422,7 @@ model Asset {
   returns AssetReturn[]
   transfers AssetTransfer[]
   maintenanceRecords MaintenanceRecord[]
+  incidents Incident[]
   inventoryItems InventoryItem[]
   importRows AssetImportRow[]
   endpointAgents EndpointAgent[] @relation("AgentLinkedAsset")
@@ -566,6 +611,75 @@ model MaintenanceRecord {
   updatedAt DateTime @updatedAt
   @@index([assetId, status])
   @@map("maintenance_records")
+}
+model Incident {
+  id String @id @default(uuid()) @db.Uuid
+  incidentNo String @unique @db.VarChar(50)
+  title String @db.VarChar(250)
+  category IncidentCategory
+  status IncidentStatus @default(NEW)
+  priority IncidentPriority
+  impact IncidentImpact
+  urgency IncidentUrgency
+  description String
+  businessImpact String?
+  initialAssessment String?
+  containmentAction String?
+  resolution String?
+  rootCause String?
+  correctiveAction String?
+  preventiveAction String?
+  lessonsLearned String?
+  serviceName String? @db.VarChar(200)
+  reporterName String @db.VarChar(150)
+  reporterContact String? @db.VarChar(255)
+  reportedById String? @db.Uuid
+  assignedToId String? @db.Uuid
+  createdBy String @db.Uuid
+  departmentId String? @db.Uuid
+  locationId String? @db.Uuid
+  assetId String? @db.Uuid
+  affectedUsers Int @default(0)
+  downtimeMinutes Int @default(0)
+  isSecurityIncident Boolean @default(false)
+  isBusinessContinuityEvent Boolean @default(false)
+  detectedAt DateTime
+  reportedAt DateTime @default(now())
+  acknowledgedAt DateTime?
+  responseStartedAt DateTime?
+  resolvedAt DateTime?
+  closedAt DateTime?
+  dueAt DateTime?
+  slaResponseDueAt DateTime
+  slaResolutionDueAt DateTime
+  reporter User? @relation("IncidentReporter", fields: [reportedById], references: [id], onDelete: SetNull)
+  assignee User? @relation("IncidentAssignee", fields: [assignedToId], references: [id], onDelete: SetNull)
+  creator User @relation("IncidentCreator", fields: [createdBy], references: [id], onDelete: Restrict)
+  department Department? @relation(fields: [departmentId], references: [id], onDelete: Restrict)
+  location Location? @relation(fields: [locationId], references: [id], onDelete: Restrict)
+  asset Asset? @relation(fields: [assetId], references: [id], onDelete: Restrict)
+  activities IncidentActivity[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@index([status, priority, reportedAt])
+  @@index([category, reportedAt])
+  @@index([departmentId, reportedAt])
+  @@index([assetId, reportedAt])
+  @@map("incidents")
+}
+model IncidentActivity {
+  id String @id @default(uuid()) @db.Uuid
+  incidentId String @db.Uuid
+  type String @db.VarChar(40)
+  note String
+  fromStatus IncidentStatus?
+  toStatus IncidentStatus?
+  performedBy String @db.Uuid
+  incident Incident @relation(fields: [incidentId], references: [id], onDelete: Cascade)
+  actor User @relation("IncidentActivityActor", fields: [performedBy], references: [id], onDelete: Restrict)
+  createdAt DateTime @default(now())
+  @@index([incidentId, createdAt])
+  @@map("incident_activities")
 }
 model InventorySession {
   id String @id @default(uuid()) @db.Uuid
