@@ -1,5 +1,5 @@
 import { BadRequestException,ConflictException,ForbiddenException,Injectable,NotFoundException } from '@nestjs/common'
-import { AssetHistoryAction,Prisma } from '@prisma/client'
+import { AssetAssignmentStatus,AssetHistoryAction,Prisma } from '@prisma/client'
 import { PrismaService } from '../../database/prisma.service'
 import { CreateAssetDto,ListAssetsQuery,UpdateAssetDto } from './assets.dto'
 
@@ -28,7 +28,16 @@ export class AssetsService{
       {department:{is:{OR:[{code:text},{name:text}]}}},{location:{is:{OR:[{code:text},{name:text},{address:text}]}}},{warehouse:{is:{OR:[{code:text},{name:text}]}}},
       {status:{is:{OR:[{code:text},{name:text}]}}},{histories:{some:{OR:[{description:text},{referenceType:text}]}}},
     ]:[]
-    const where:Prisma.AssetWhereInput={deletedAt:null,categoryId:q.category,departmentId,locationId:q.location,status:q.status?{code:q.status}:undefined,AND:[...(search.length?[{OR:search}]:[]),...(q.assignedUser?[{OR:[{assignedUserId:q.assignedUser},{currentCustodianId:q.assignedUser}]}]:[])]}
+    // Operational views live on the open assignment, not on the asset row itself.
+    const now=new Date()
+    const openAssignment=(extra:Prisma.AssetAssignmentWhereInput={}):Prisma.AssetWhereInput=>({assignments:{some:{status:AssetAssignmentStatus.OPEN,...extra}}})
+    const lifecycleFilter:Prisma.AssetWhereInput[]=
+      q.lifecycle==='assigned'?[{currentCustodianId:{not:null}}]
+      :q.lifecycle==='in_stock'?[{currentCustodianId:null,status:{is:{code:'READY'}}}]
+      :q.lifecycle==='due'?[openAssignment({expectedReturnDate:{not:null}})]
+      :q.lifecycle==='overdue'?[openAssignment({expectedReturnDate:{lt:now}})]
+      :[]
+    const where:Prisma.AssetWhereInput={deletedAt:null,categoryId:q.category,departmentId,locationId:q.location,status:q.status?{code:q.status}:undefined,AND:[...(search.length?[{OR:search}]:[]),...(q.assignedUser?[{OR:[{assignedUserId:q.assignedUser},{currentCustodianId:q.assignedUser}]}]:[]),...lifecycleFilter]}
     const allowed=['assetTag','name','createdAt','updatedAt','purchaseCost'],sort=allowed.includes(q.sort)?q.sort:'assetTag'
     const [data,total]=await this.db.$transaction([this.db.asset.findMany({where,include,skip:(q.page-1)*q.limit,take:q.limit,orderBy:{[sort]:q.order}}),this.db.asset.count({where})])
     return {data,meta:{page:q.page,limit:q.limit,total,totalPages:Math.ceil(total/q.limit)}}
@@ -45,10 +54,27 @@ export class AssetsService{
   }
   async summary(actor:Actor){
     this.assertOperator(actor);const departmentId=this.scopedDepartment(actor),base={deletedAt:null,departmentId}
-    const [total,assigned,available,attention,due]=await Promise.all([
+    const [total,assigned,available,attention,due,valueAggregate,byCategoryRaw,byStatusRaw,byLocationRaw]=await Promise.all([
       this.db.asset.count({where:base}),this.db.asset.count({where:{...base,currentCustodianId:{not:null}}}),this.db.asset.count({where:{...base,status:{code:'READY'}}}),
       this.db.asset.count({where:{...base,status:{code:{in:['MAINTENANCE','BROKEN','LOST']}}}}),this.db.assetAssignment.count({where:{status:'OPEN',expectedReturnDate:{lt:new Date()},...(departmentId?{departmentId}:{})}}),
-    ]);return {total,assigned,available,due,attention}
+      this.db.asset.aggregate({where:base,_sum:{purchaseCost:true}}),
+      this.db.asset.groupBy({by:['categoryId'],where:base,_count:{_all:true}}),
+      this.db.asset.groupBy({by:['statusId'],where:base,_count:{_all:true}}),
+      this.db.asset.groupBy({by:['locationId'],where:base,_count:{_all:true}}),
+    ])
+    const [categories,statuses,locations]=await Promise.all([
+      this.db.assetCategory.findMany({where:{id:{in:byCategoryRaw.map(item=>item.categoryId)}},select:{id:true,name:true}}),
+      this.db.assetStatus.findMany({where:{id:{in:byStatusRaw.map(item=>item.statusId)}},select:{id:true,code:true,name:true}}),
+      this.db.location.findMany({where:{id:{in:byLocationRaw.map(item=>item.locationId).filter((value):value is string=>Boolean(value))}},select:{id:true,name:true}}),
+    ])
+    const label=<T extends {id:string}>(rows:T[],id:string|null,pick:(row:T)=>string,fallback:string)=>{const row=id?rows.find(item=>item.id===id):undefined;return row?pick(row):fallback}
+    const sortDesc=(rows:{label:string;count:number}[])=>rows.sort((a,b)=>b.count-a.count||a.label.localeCompare(b.label,'vi'))
+    return {
+      total,assigned,available,due,attention,totalValue:Number(valueAggregate._sum.purchaseCost||0),
+      byCategory:sortDesc(byCategoryRaw.map(item=>({id:item.categoryId,label:label(categories,item.categoryId,row=>row.name,'Chưa phân loại'),count:item._count._all}))),
+      byStatus:sortDesc(byStatusRaw.map(item=>({id:item.statusId,code:label(statuses,item.statusId,row=>row.code,'UNKNOWN'),label:label(statuses,item.statusId,row=>row.name,'Không xác định'),count:item._count._all}))),
+      byLocation:sortDesc(byLocationRaw.map(item=>({id:item.locationId,label:label(locations,item.locationId,row=>row.name,'Chưa gán vị trí'),count:item._count._all}))),
+    }
   }
   async history(id:string,actor:Actor){await this.get(id,actor);return {data:await this.db.assetHistory.findMany({where:{assetId:id},include:{actor:{select:{fullName:true}}},orderBy:{createdAt:'desc'}})}}
 

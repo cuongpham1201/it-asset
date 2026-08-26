@@ -10,6 +10,7 @@ import { DirectoryModule } from './modules/directory/directory.module'
 import { UsersModule } from './modules/users/users.module'
 import { PeopleModule } from './modules/people/people.module'
 import { CategoriesModule } from './modules/categories/categories.module'
+import { CatalogModule } from './modules/catalog/catalog.module'
 import { LifecycleModule } from './modules/lifecycle/lifecycle.module'
 import { SettingsModule } from './modules/settings/settings.module'
 import { MasterDataModule } from './modules/master-data/master-data.module'
@@ -21,5 +22,5 @@ import { DiscoveryModule } from './modules/discovery/discovery.module'
 import { IncidentsModule } from './modules/incidents/incidents.module'
 import { RenewalsModule } from './modules/renewals/renewals.module'
 
-@Module({imports:[ConfigModule.forRoot({isGlobal:true}),DatabaseModule,ObservabilityModule,AuthModule,AssetsModule,LookupsModule,DirectoryModule,UsersModule,PeopleModule,CategoriesModule,LifecycleModule,SettingsModule,MasterDataModule,VendorsModule,InventoryModule,AssetImportsModule,DiscoveryModule,IncidentsModule,RenewalsModule],controllers:[HealthController]})
+@Module({imports:[ConfigModule.forRoot({isGlobal:true}),DatabaseModule,ObservabilityModule,AuthModule,AssetsModule,LookupsModule,DirectoryModule,UsersModule,PeopleModule,CategoriesModule,CatalogModule,LifecycleModule,SettingsModule,MasterDataModule,VendorsModule,InventoryModule,AssetImportsModule,DiscoveryModule,IncidentsModule,RenewalsModule],controllers:[HealthController]})
 export class AppModule implements NestModule{configure(consumer:MiddlewareConsumer){consumer.apply(RequestLoggerMiddleware).forRoutes('*')}}

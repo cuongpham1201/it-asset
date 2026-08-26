@@ -9,6 +9,12 @@ export class ListAssetsQuery{
   @IsOptional() @IsUUID() location?:string
   @IsOptional() @IsString() status?:string
   @IsOptional() @IsUUID() assignedUser?:string
+  /**
+   * Operational view rather than a stored column:
+   * assigned = someone is holding it, in_stock = ready in a warehouse,
+   * due = has an expected return date, overdue = that date has passed.
+   */
+  @IsOptional() @IsIn(['assigned','in_stock','due','overdue']) lifecycle?:'assigned'|'in_stock'|'due'|'overdue'
   @IsOptional() @IsString() sort='assetTag'
   @IsOptional() @IsIn(['asc','desc']) order:'asc'|'desc'='asc'
   @Type(()=>Number) @IsInt() @Min(1) page=1

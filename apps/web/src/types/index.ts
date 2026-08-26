@@ -22,6 +22,8 @@ export interface Asset {
   assignmentType?: 'Cấp phát' | 'Cho mượn'
   manufacturer?: string
   model?: string
+  manufacturerId?: string
+  modelId?: string
   cpu?: string
   ram?: string
   storage?: string
