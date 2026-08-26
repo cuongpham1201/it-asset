@@ -13,8 +13,22 @@ export class CatalogService{
 
   assertAdmin(actor:Actor){if(actor.role!=='ADMIN')throw new ForbiddenException('Chỉ quản trị viên được quản lý hãng sản xuất và model')}
 
-  private audit(tx:Prisma.TransactionClient,actor:Actor,action:string,entityType:string,entityId:string,values:Record<string,unknown>){
-    return tx.auditLog.create({data:{userId:actor.id,action,entityType,entityId,newValues:values as Prisma.InputJsonValue}})
+  private audit(tx:Prisma.TransactionClient,actor:Actor,action:string,entityType:string,entityId:string,oldValues:unknown,newValues:unknown){
+    return tx.auditLog.create({data:{userId:actor.id,action,entityType,entityId,oldValues:(oldValues??undefined) as Prisma.InputJsonValue,newValues:(newValues??undefined) as Prisma.InputJsonValue}})
+  }
+
+  /** Retiring a record is a different event from renaming one, so it gets its own action. */
+  private changeAction(prefix:string,previousStatus:string,nextStatus?:string){
+    if(nextStatus&&nextStatus!==previousStatus)return `${prefix}_${nextStatus==='INACTIVE'?'DEACTIVATED':'REACTIVATED'}`
+    return `${prefix}_UPDATED`
+  }
+
+  private manufacturerSnapshot(row:{name:string;website:string|null;supportUrl:string|null;supportPhone:string|null;status:string}){
+    return {name:row.name,website:row.website,supportUrl:row.supportUrl,supportPhone:row.supportPhone,status:row.status}
+  }
+
+  private modelSnapshot(row:{name:string;modelNumber:string|null;manufacturerId:string;categoryId:string;status:string}){
+    return {name:row.name,modelNumber:row.modelNumber,manufacturerId:row.manufacturerId,categoryId:row.categoryId,status:row.status}
   }
 
   listManufacturers(){
@@ -26,7 +40,7 @@ export class CatalogService{
     try{
       return await this.db.$transaction(async tx=>{
         const manufacturer=await tx.manufacturer.create({data:{name:body.name,website:body.website||null,supportUrl:body.supportUrl||null,supportPhone:body.supportPhone||null}})
-        await this.audit(tx,actor,'MANUFACTURER_CREATED','Manufacturer',manufacturer.id,{name:manufacturer.name})
+        await this.audit(tx,actor,'MANUFACTURER_CREATED','Manufacturer',manufacturer.id,undefined,this.manufacturerSnapshot(manufacturer))
         return manufacturer
       })
     }catch(error:any){if(error?.code==='P2002')throw new ConflictException('Tên hãng sản xuất đã tồn tại');throw error}
@@ -43,7 +57,7 @@ export class CatalogService{
     try{
       return await this.db.$transaction(async tx=>{
         const manufacturer=await tx.manufacturer.update({where:{id},data:{name:body.name,website:body.website,supportUrl:body.supportUrl,supportPhone:body.supportPhone,status:body.status}})
-        await this.audit(tx,actor,'MANUFACTURER_UPDATED','Manufacturer',manufacturer.id,{name:manufacturer.name,status:manufacturer.status})
+        await this.audit(tx,actor,this.changeAction('MANUFACTURER',existing.status,body.status),'Manufacturer',manufacturer.id,this.manufacturerSnapshot(existing),this.manufacturerSnapshot(manufacturer))
         return manufacturer
       })
     }catch(error:any){if(error?.code==='P2002')throw new ConflictException('Tên hãng sản xuất đã tồn tại');throw error}
@@ -70,7 +84,7 @@ export class CatalogService{
     try{
       return await this.db.$transaction(async tx=>{
         const model=await tx.assetModel.create({data:{name:body.name,manufacturerId:body.manufacturerId,categoryId:body.categoryId,modelNumber:body.modelNumber||null,description:body.description||null},include:modelInclude})
-        await this.audit(tx,actor,'ASSET_MODEL_CREATED','AssetModel',model.id,{name:model.name,manufacturerId:model.manufacturerId,categoryId:model.categoryId})
+        await this.audit(tx,actor,'ASSET_MODEL_CREATED','AssetModel',model.id,undefined,this.modelSnapshot(model))
         return model
       })
     }catch(error:any){if(error?.code==='P2002')throw new ConflictException('Model này đã tồn tại cho hãng sản xuất đã chọn');throw error}
@@ -88,7 +102,7 @@ export class CatalogService{
     try{
       return await this.db.$transaction(async tx=>{
         const model=await tx.assetModel.update({where:{id},data:{name:body.name,manufacturerId:body.manufacturerId,categoryId:body.categoryId,modelNumber:body.modelNumber,description:body.description,status:body.status},include:modelInclude})
-        await this.audit(tx,actor,'ASSET_MODEL_UPDATED','AssetModel',model.id,{name:model.name,status:model.status})
+        await this.audit(tx,actor,this.changeAction('ASSET_MODEL',existing.status,body.status),'AssetModel',model.id,this.modelSnapshot(existing),this.modelSnapshot(model))
         return model
       })
     }catch(error:any){if(error?.code==='P2002')throw new ConflictException('Model này đã tồn tại cho hãng sản xuất đã chọn');throw error}

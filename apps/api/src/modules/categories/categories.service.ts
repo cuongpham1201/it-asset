@@ -43,7 +43,10 @@ export class CategoriesService{
     try{
       return await this.db.$transaction(async tx=>{
         const category=await tx.assetCategory.update({where:{id},data:{code:body.code,name:body.name,parentId:body.parentId,description:body.description,status:body.status}})
-        await tx.auditLog.create({data:{userId:actor.id,action:'ASSET_CATEGORY_UPDATED',entityType:'AssetCategory',entityId:category.id,oldValues:{code:existing.code,name:existing.name,status:existing.status} as Prisma.InputJsonValue,newValues:{code:category.code,name:category.name,status:category.status} as Prisma.InputJsonValue}})
+        const action=body.status&&body.status!==existing.status
+          ?`ASSET_CATEGORY_${body.status==='INACTIVE'?'DEACTIVATED':'REACTIVATED'}`
+          :'ASSET_CATEGORY_UPDATED'
+        await tx.auditLog.create({data:{userId:actor.id,action,entityType:'AssetCategory',entityId:category.id,oldValues:{code:existing.code,name:existing.name,parentId:existing.parentId,status:existing.status} as Prisma.InputJsonValue,newValues:{code:category.code,name:category.name,parentId:category.parentId,status:category.status} as Prisma.InputJsonValue}})
         return category
       })
     }catch(error:any){if(error?.code==='P2002')throw new ConflictException('Mã nhóm tài sản đã tồn tại');throw error}

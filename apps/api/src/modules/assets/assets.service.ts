@@ -76,7 +76,7 @@ export class AssetsService{
       byLocation:sortDesc(byLocationRaw.map(item=>({id:item.locationId,label:label(locations,item.locationId,row=>row.name,'Chưa gán vị trí'),count:item._count._all}))),
     }
   }
-  async history(id:string,actor:Actor){await this.get(id,actor);return {data:await this.db.assetHistory.findMany({where:{assetId:id},include:{actor:{select:{fullName:true}}},orderBy:{createdAt:'desc'}})}}
+  async history(id:string,actor:Actor){await this.get(id,actor);return {data:await this.db.assetHistory.findMany({where:{assetId:id},include:{actor:{select:{id:true,username:true,fullName:true}},fromCustodian:{select:{id:true,employeeCode:true,fullName:true,department:{select:{id:true,code:true,name:true}}}},toCustodian:{select:{id:true,employeeCode:true,fullName:true,department:{select:{id:true,code:true,name:true}}}},fromLocation:{select:{id:true,name:true}},toLocation:{select:{id:true,name:true}}},orderBy:{createdAt:'desc'}})}}
 
   async create(body:CreateAssetDto,actor:Actor){
     if(!['ADMIN','IT'].includes(actor.role))throw new ForbiddenException('Chỉ Admin hoặc IT được nhập kho tài sản')

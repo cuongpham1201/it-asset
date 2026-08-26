@@ -75,3 +75,31 @@ export const getAssetSummary = async (signal?: AbortSignal): Promise<AssetSummar
   ...EMPTY_SUMMARY,
   ...(await api.get<AssetSummary>('/assets/summary', signal)),
 })
+
+export interface HistoryPersonRef {
+  id: string
+  employeeCode?: string | null
+  fullName: string
+  department?: { id: string; code: string; name: string } | null
+}
+
+export interface AssetHistoryEntry {
+  id: string
+  action: 'CREATED' | 'UPDATED' | 'ASSIGNED' | 'RETURNED' | 'TRANSFERRED' | 'MAINTENANCE' | 'INVENTORIED' | 'DISPOSED'
+  description: string
+  createdAt: string
+  referenceType: string | null
+  referenceId: string | null
+  actor?: { id: string; username: string; fullName: string } | null
+  /** The person holding the asset before and after the event. Null when custody was untouched. */
+  fromCustodian?: HistoryPersonRef | null
+  toCustodian?: HistoryPersonRef | null
+  /** Legacy columns, only populated when the custodian also had a system account. */
+  fromUserId?: string | null
+  toUserId?: string | null
+  fromLocation?: { id: string; name: string } | null
+  toLocation?: { id: string; name: string } | null
+}
+
+export const listAssetHistory = (id: string, signal?: AbortSignal) =>
+  api.get<{ data: AssetHistoryEntry[] }>(`/assets/${id}/history`, signal)

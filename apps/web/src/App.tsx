@@ -13,7 +13,7 @@ import {
   FileSpreadsheet, Upload, Mail, Send,
   LogOut, Eye, EyeOff,
   Headphones, Keyboard, Mouse, Video, PlugZap, Usb, HardDrive,
-  Palette, Image as ImageIcon, Wifi, Languages, Clock3, Tags,
+  Palette, Image as ImageIcon, Wifi, Languages, Clock3, Tags, ScrollText,
   KeyRound,
 } from 'lucide-react'
 import { categories, seedAssets, seedBrandingSettings, seedDepartments, seedEmailSettings, seedSites, seedTransactions, seedUsers } from './data'
@@ -29,6 +29,8 @@ import { AssetBook, type AssetBookOption, type AssetStatusOption } from './featu
 import { parseAssetImportWorkbook } from './features/assets/asset-import'
 import { OperationsBoard } from './features/assets/OperationsBoard'
 import { InventoryManagement } from './features/inventory/InventoryManagement'
+import { AuditLogScreen } from './features/audit/AuditLogScreen'
+import { AssetHistoryTimeline } from './features/assets/AssetHistoryTimeline'
 import { CatalogManagement } from './features/master-data/CatalogManagement'
 import { DASHBOARD_VIEW_FILTER, DashboardOverview, type DashboardView } from './features/dashboard/DashboardOverview'
 import { readApiCollection, type ApiCollectionResponse } from './services/api-response'
@@ -165,7 +167,7 @@ const navSections: Array<{title:string;items:Array<{label:string;icon:typeof Box
   {title:'',items:[{label:'Tổng quan',icon:LayoutDashboard}]},
   {title:'TÀI SẢN',items:[{label:'Sổ tài sản',icon:Box},{label:'Cấp phát & Thu hồi',icon:UserPlus},{label:'Nhập kho',icon:ArrowDownRight},{label:'Kho & Vị trí',icon:Warehouse},{label:'Kiểm kê',icon:ClipboardCheck},{label:'Danh mục tài sản',icon:Tags}]},
   {title:'NGHIỆP VỤ',items:[{label:'Mua sắm & PO',icon:ShoppingCart},{label:'Nhà cung cấp',icon:Building2},{label:'License & Gia hạn',icon:KeyRound},{label:'Bảo trì & Sự cố',icon:Wrench},{label:'Xuất kho',icon:ArrowUpRight}]},
-  {title:'BÁO CÁO',items:[{label:'Báo cáo',icon:BarChart3},{label:'Lịch sử / Audit',icon:History}]},
+  {title:'BÁO CÁO',items:[{label:'Báo cáo',icon:BarChart3},{label:'Lịch sử / Audit',icon:History},{label:'Nhật ký hệ thống',icon:ScrollText}]},
   {title:'CÔNG CỤ',items:[{label:'Barcode / QR',icon:ScanLine},{label:'Khám phá & Agent',icon:Wifi}]},
 ]
 
@@ -219,7 +221,7 @@ function Sidebar({ page, setPage, open, close, user, logout, openChangePassword,
     {open && <div className="overlay" onClick={close} />}
     <aside className={`sidebar ${open ? 'open' : ''}`}>
       <div className="brand"><div className="brand-mark">{branding.logoDataUrl?<img src={branding.logoDataUrl} alt="Logo"/>:<Box size={23} strokeWidth={2.3}/>}</div><div className="brand-copy"><b>{branding.appName}</b><small>{language==='en-US'?'ASSET MANAGEMENT SYSTEM':'HỆ THỐNG QUẢN LÝ TÀI SẢN'}</small></div></div>
-      <nav>{navSections.map(section=>{const itOnly=['Khám phá & Agent','License & Gia hạn','Bảo trì & Sự cố'],adminOnly=['Danh mục tài sản'];const permitted=section.items.filter(item=>(!itOnly.includes(item.label)||['Admin','IT'].includes(user.role))&&(!adminOnly.includes(item.label)||user.role==='Admin'));const items=user.role==='HCNS'?permitted.filter(item=>hcnsAllowed.includes(item.label)):permitted;return items.length?<div className="nav-section" key={section.title}><p className="nav-title">{uiLabel(section.title,language)}</p>{items.map(item=><button key={item.label} className={page===item.label?'active':''} onClick={()=>{setPage(item.label);close()}}><item.icon size={17}/><span>{uiLabel(item.label,language)}</span>{item.count&&<em>{item.count}</em>}</button>)}</div>:null})}</nav>
+      <nav>{navSections.map(section=>{const itOnly=['Khám phá & Agent','License & Gia hạn','Bảo trì & Sự cố'],adminOnly=['Danh mục tài sản','Nhật ký hệ thống'];const permitted=section.items.filter(item=>(!itOnly.includes(item.label)||['Admin','IT'].includes(user.role))&&(!adminOnly.includes(item.label)||user.role==='Admin'));const items=user.role==='HCNS'?permitted.filter(item=>hcnsAllowed.includes(item.label)):permitted;return items.length?<div className="nav-section" key={section.title}><p className="nav-title">{uiLabel(section.title,language)}</p>{items.map(item=><button key={item.label} className={page===item.label?'active':''} onClick={()=>{setPage(item.label);close()}}><item.icon size={17}/><span>{uiLabel(item.label,language)}</span>{item.count&&<em>{item.count}</em>}</button>)}</div>:null})}</nav>
       <div className="sidebar-bottom">
         {user.role==='Admin'&&<button className={['Cấu hình hệ thống','Tùy chỉnh thương hiệu','Cấu hình email'].includes(page) ? 'active' : ''} onClick={() => { setPage('Cấu hình hệ thống'); close() }}><Settings size={19} /><span>{uiLabel('Cài đặt',language)}</span></button>}
         <button><HelpCircle size={19} /><span>{uiLabel('Trợ giúp',language)}</span></button>
@@ -588,7 +590,7 @@ function AssetModal({ asset, departmentOptions, siteOptions, onClose, onSave }: 
   </div>
 }
 
-function AssetDetail({ asset, transactions, emailSettings, branding, onClose, onAssign, onBarcode, onEdit }: { asset: Asset; transactions: AssetTransaction[]; emailSettings:EmailSettings; branding:BrandingSettings; onClose: () => void; onAssign: () => void; onBarcode: () => void; onEdit: () => void }) {
+function AssetDetail({ asset, transactions, emailSettings, branding, language, onClose, onAssign, onBarcode, onEdit }: { asset: Asset; transactions: AssetTransaction[]; emailSettings:EmailSettings; branding:BrandingSettings; language:string; onClose: () => void; onAssign: () => void; onBarcode: () => void; onEdit: () => void }) {
   const [tab, setTab] = useState<'Thông tin'|'Cấu hình'|'Lịch sử'>('Thông tin')
   const history = transactions.filter(t=>t.assetId===asset.id)
   const handoverRecords=history.filter(t=>['Cấp phát','Cho mượn','Thu hồi','Điều chuyển'].includes(t.type))
@@ -599,7 +601,7 @@ function AssetDetail({ asset, transactions, emailSettings, branding, onClose, on
     <div className="detail-tabs"><button className={tab==='Thông tin'?'active':''} onClick={()=>setTab('Thông tin')}>Thông tin & sở hữu</button><button className={tab==='Cấu hình'?'active':''} onClick={()=>setTab('Cấu hình')}>Cấu hình kỹ thuật</button><button className={tab==='Lịch sử'?'active':''} onClick={()=>setTab('Lịch sử')}>Lịch sử tài sản <span>{history.length}</span></button></div>
     {tab==='Thông tin'&&<div className="detail-content"><section><h3>Người sử dụng hiện tại</h3><div className="owner-panel"><span className="avatar">{asset.assignedTo.split(' ').slice(-2).map(x=>x[0]).join('')}</span><div><b>{asset.assignedTo}</b><small>{asset.department}</small></div></div><dl><div><dt>Vị trí</dt><dd>{asset.location}</dd></div><div><dt>Ngày dự kiến trả</dt><dd>{asset.dueDate?new Date(asset.dueDate).toLocaleDateString('vi-VN'):'Không giới hạn'}</dd></div><div><dt>Tình trạng bàn giao</dt><dd>{asset.condition||'Tốt'}</dd></div></dl></section><section><h3>Thông tin tài sản</h3><dl><div><dt>Nhóm tài sản</dt><dd>{asset.category}</dd></div><div><dt>Ngày mua</dt><dd>{new Date(asset.purchaseDate).toLocaleDateString('vi-VN')}</dd></div><div><dt>Nguyên giá</dt><dd>{money(asset.purchaseCost)}</dd></div><div><dt>Mã Barcode / QR</dt><dd>{asset.code}</dd></div></dl></section></div>}
     {tab==='Cấu hình'&&<div className="specs-panel">{specs.map(([label,value])=><div key={label}><span>{label}</span><b className={value?'':'not-set'}>{value||'Chưa cập nhật'}</b></div>)}</div>}
-    {tab==='Lịch sử'&&<div className="detail-history">{history.length?history.map(t=><div key={t.id}><span className={`transaction-icon ${t.type==='Cấp phát'?'purple':t.type==='Thu hồi'?'orange':t.type==='Nhập kho'?'green':'blue'}`}><History size={16}/></span><div><b>{t.type}</b><p>{t.from} <ChevronRight size={11}/> {t.to}</p><small>{new Date(t.date).toLocaleString('vi-VN')} · {t.performedBy}{t.condition?` · Tình trạng: ${t.condition}`:''}</small><em>{t.note}</em></div></div>):<div className="empty"><History size={28}/><h3>Chưa có giao dịch</h3></div>}</div>}
+    {tab==='Lịch sử'&&<AssetHistoryTimeline assetApiId={asset.apiId} language={language}/>}
     <div className="detail-attachments"><h3>Hồ sơ đính kèm</h3><button className="attachment-row" disabled={!handoverRecords.length} onClick={()=>handoverRecords[0]&&printHandover(asset,handoverRecords[0],emailSettings,branding)}><FileText size={16}/><span><b>Biên bản bàn giao A4</b><small>{handoverRecords.length?'Bấm để xem và in biên bản gần nhất':'Chưa phát sinh nghiệp vụ bàn giao'}</small></span><em>{handoverRecords.length} hồ sơ</em></button><div><FileSpreadsheet size={16}/><span>Hóa đơn / Chứng từ mua hàng</span><b>Chưa cập nhật</b></div></div>
   </section></main>
 }
@@ -876,7 +878,7 @@ export default function App() {
   const openScanner=(mode:'lookup'|'intake'='lookup')=>setPage(mode==='intake'?'Nhập kho':'Barcode / QR')
   const operations=<OperationsBoard summary={summaryQuery.data} categories={assetOptions} departments={departmentPickerOptions} locations={locationPickerOptions} statuses={statusPickerOptions} people={peoplePickerOptions} transactions={scopedTransactions} refreshToken={dataToken} onAssign={setAssignmentAsset} onBarcode={setBarcodeAsset} onView={a=>setDetailAsset(a)} openHistory={()=>setPage('Lịch sử / Audit')} openScanner={openScanner}/>
   let content:React.ReactNode
-  if(detailAsset) content=<AssetDetail asset={detailAsset} transactions={scopedTransactions} emailSettings={emailSettings} branding={branding} onClose={()=>setDetailAsset(undefined)} onAssign={()=>{setDetailAsset(undefined);setAssignmentAsset(detailAsset)}} onBarcode={()=>{setDetailAsset(undefined);setBarcodeAsset(detailAsset)}} onEdit={()=>{setDetailAsset(undefined);setModal(detailAsset)}}/>
+  if(detailAsset) content=<AssetDetail asset={detailAsset} transactions={scopedTransactions} emailSettings={emailSettings} branding={branding} language={regional.language} onClose={()=>setDetailAsset(undefined)} onAssign={()=>{setDetailAsset(undefined);setAssignmentAsset(detailAsset)}} onBarcode={()=>{setDetailAsset(undefined);setBarcodeAsset(detailAsset)}} onEdit={()=>{setDetailAsset(undefined);setModal(detailAsset)}}/>
   else if(page==='Tổng quan') content=<DashboardOverview summary={summaryQuery.data} summaryLoading={summaryQuery.loading} summaryError={summaryQuery.error} onSummaryRetry={summaryQuery.retry} drilldown={{rows:(dashboardAssets.data?.data??[]).map(fromApiAsset),total:dashboardAssets.data?.meta.total??0,loading:dashboardAssets.loading,error:dashboardAssets.error,retry:dashboardAssets.retry}} transactions={scopedTransactions} activeView={dashboardView} activeCategoryId={dashboardCategory.id} activeCategoryLabel={dashboardCategory.label} onSelectView={view=>{setDashboardView(view);setDashboardCategory({id:'',label:''})}} onSelectCategory={(id,label)=>{setDashboardCategory({id,label});setDashboardView('all')}} goAssets={()=>setPage('Sổ tài sản')} goPage={setPage} onView={asset=>setDetailAsset(asset)} language={regional.language} userName={currentUser.name} compactMoney={compactMoney} uiLabel={uiLabel} localizedDefault={localizedDefault}/>
   else if(page==='Sổ tài sản') content=<AssetBook categories={assetOptions} departments={departmentPickerOptions} statuses={statusPickerOptions} canManageCategories={isAdmin} refreshToken={dataToken} onImport={importAssets} onAdd={()=>setModal(null)} onEdit={setModal} onDelete={remove} onAssign={setAssignmentAsset} onBarcode={setBarcodeAsset} onView={a=>setDetailAsset(a)} onManageCategories={()=>setPage('Danh mục tài sản')} onExport={(items)=>setExportAssets(items)} renderIcon={iconFor} parseImportFile={parseAssetImportFile}/>
   else if(page==='Cấp phát & Thu hồi') content=operations
@@ -890,6 +892,7 @@ export default function App() {
   else if(page==='Tùy chỉnh thương hiệu'&&isAdmin) content=<BrandingConfiguration settings={branding} onSave={saveBrandingSetting}/>
   else if(page==='Cấu hình email'&&isAdmin) content=<EmailConfiguration settings={emailSettings} onSave={saveEmailSetting}/>
   else if(page==='Danh mục tài sản'&&isAdmin) content=<CatalogManagement/>
+  else if(page==='Nhật ký hệ thống'&&isAdmin) content=<AuditLogScreen language={regional.language}/>
   else content=<Placeholder title={page} language={regional.language}/>
   return <div className="app">
     <Sidebar page={page} setPage={next=>{setDetailAsset(undefined);setPage(next)}} open={menuOpen} close={()=>setMenuOpen(false)} user={currentUser} logout={logout} openChangePassword={()=>setPasswordModalOpen(true)} branding={branding} language={regional.language}/>

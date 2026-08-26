@@ -15,6 +15,7 @@ export const pageRoutes: Record<string,string> = {
   'Bảo trì & Sự cố':'/maintenance',
   'Báo cáo':'/reports',
   'Danh mục tài sản':'/catalog',
+  'Nhật ký hệ thống':'/audit-log',
   'Cấu hình hệ thống':'/settings',
   'Tùy chỉnh thương hiệu':'/settings/branding',
   'Cấu hình email':'/settings/email',

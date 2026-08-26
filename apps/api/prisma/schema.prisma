@@ -123,11 +123,13 @@ enum IncidentAssignmentRole {
   PRIMARY
   SUPPORT
 }
+
 enum DigitalEntitlementType {
   LICENSE
   SSL_CERTIFICATE
   DOMAIN
 }
+
 enum DigitalEntitlementStatus {
   ACTIVE
   EXPIRING
@@ -135,16 +137,19 @@ enum DigitalEntitlementStatus {
   SUSPENDED
   RETIRED
 }
+
 enum DigitalAssignmentStatus {
   ACTIVE
   REVOKED
 }
+
 enum DigitalRenewalStatus {
   PLANNED
   APPROVED
   COMPLETED
   CANCELLED
 }
+
 enum RenewalAlertStatus {
   OPEN
   ACKNOWLEDGED
@@ -257,14 +262,14 @@ model User {
   incidentAssignmentsMade     IncidentAssignment[]   @relation("IncidentAssignmentActor")
   incidentAssignmentsAccepted IncidentAssignment[]   @relation("IncidentAssignmentAcceptor")
   incidentAssignmentsReleased IncidentAssignment[]   @relation("IncidentAssignmentReleaser")
-  digitalEntitlementsOwned     DigitalEntitlement[]   @relation("DigitalEntitlementOwner")
-  digitalEntitlementsCreated   DigitalEntitlement[]   @relation("DigitalEntitlementCreator")
-  digitalAssignmentsMade       DigitalAssignment[]    @relation("DigitalAssignmentActor")
-  digitalAssignmentsRevoked    DigitalAssignment[]    @relation("DigitalAssignmentRevoker")
-  digitalRenewalsApproved      DigitalRenewal[]       @relation("DigitalRenewalApprover")
-  digitalRenewalsCompleted     DigitalRenewal[]       @relation("DigitalRenewalActor")
-  renewalAlertsAcknowledged    RenewalAlert[]         @relation("RenewalAlertAcknowledger")
-  renewalPoliciesUpdated       RenewalAlertPolicy[]   @relation("RenewalPolicyUpdater")
+  digitalEntitlementsOwned    DigitalEntitlement[]   @relation("DigitalEntitlementOwner")
+  digitalEntitlementsCreated  DigitalEntitlement[]   @relation("DigitalEntitlementCreator")
+  digitalAssignmentsMade      DigitalAssignment[]    @relation("DigitalAssignmentActor")
+  digitalAssignmentsRevoked   DigitalAssignment[]    @relation("DigitalAssignmentRevoker")
+  digitalRenewalsApproved     DigitalRenewal[]       @relation("DigitalRenewalApprover")
+  digitalRenewalsCompleted    DigitalRenewal[]       @relation("DigitalRenewalActor")
+  renewalAlertsAcknowledged   RenewalAlert[]         @relation("RenewalAlertAcknowledger")
+  renewalPoliciesUpdated      RenewalAlertPolicy[]   @relation("RenewalPolicyUpdater")
   inventorySessions           InventorySession[]     @relation("InventoryCreator")
   inventoryScans              InventoryItem[]        @relation("InventoryScanner")
   importBatches               AssetImportBatch[]     @relation("ImportCreator")
@@ -280,36 +285,36 @@ model User {
 }
 
 model DirectoryConfiguration {
-  id                    String             @id @default(uuid()) @db.Uuid
-  provider              DirectoryProvider  @unique
-  enabled               Boolean            @default(false)
-  tenantId              String?            @db.VarChar(100)
-  clientId              String?            @db.VarChar(100)
-  ldapUrl               String?            @db.VarChar(500)
-  baseDn                String?            @db.VarChar(1000)
-  bindDn                String?            @db.VarChar(1000)
-  secretEncrypted       String?
-  caCertificate         String?
-  userFilter            String?            @db.VarChar(2000)
-  useTls                Boolean            @default(true)
-  schedule              String             @default("MANUAL") @db.VarChar(30)
-  syncDisabled          Boolean            @default(false)
-  groupMapping          Json               @default("{}")
-  departmentAttribute   String             @default("department") @db.VarChar(100)
-  emailAttribute        String             @default("mail") @db.VarChar(100)
-  employeeCodeAttribute String             @default("employeeID") @db.VarChar(100)
-  usernameAttribute     String             @default("sAMAccountName") @db.VarChar(100)
-  lastTestAt            DateTime?
-  lastTestOk            Boolean?
-  lastTestMessage       String?
-  lastSyncAt            DateTime?
-  syncLicenses          Boolean            @default(false)
-  lastLicenseSyncAt     DateTime?
-  lastLicenseSyncStatus String?             @db.VarChar(30)
+  id                     String             @id @default(uuid()) @db.Uuid
+  provider               DirectoryProvider  @unique
+  enabled                Boolean            @default(false)
+  tenantId               String?            @db.VarChar(100)
+  clientId               String?            @db.VarChar(100)
+  ldapUrl                String?            @db.VarChar(500)
+  baseDn                 String?            @db.VarChar(1000)
+  bindDn                 String?            @db.VarChar(1000)
+  secretEncrypted        String?
+  caCertificate          String?
+  userFilter             String?            @db.VarChar(2000)
+  useTls                 Boolean            @default(true)
+  schedule               String             @default("MANUAL") @db.VarChar(30)
+  syncDisabled           Boolean            @default(false)
+  groupMapping           Json               @default("{}")
+  departmentAttribute    String             @default("department") @db.VarChar(100)
+  emailAttribute         String             @default("mail") @db.VarChar(100)
+  employeeCodeAttribute  String             @default("employeeID") @db.VarChar(100)
+  usernameAttribute      String             @default("sAMAccountName") @db.VarChar(100)
+  lastTestAt             DateTime?
+  lastTestOk             Boolean?
+  lastTestMessage        String?
+  lastSyncAt             DateTime?
+  syncLicenses           Boolean            @default(false)
+  lastLicenseSyncAt      DateTime?
+  lastLicenseSyncStatus  String?            @db.VarChar(30)
   lastLicenseSyncMessage String?
-  createdAt             DateTime           @default(now())
-  updatedAt             DateTime           @updatedAt
-  syncRuns              DirectorySyncRun[]
+  createdAt              DateTime           @default(now())
+  updatedAt              DateTime           @updatedAt
+  syncRuns               DirectorySyncRun[]
 
   @@map("directory_configurations")
 }
@@ -347,29 +352,31 @@ model AuthSession {
 }
 
 model Person {
-  id                     String            @id @default(uuid()) @db.Uuid
-  employeeCode           String            @unique @db.VarChar(50)
-  fullName               String            @db.VarChar(150)
-  email                  String?           @unique @db.VarChar(255)
-  phone                  String?           @db.VarChar(30)
-  jobTitle               String?           @db.VarChar(150)
-  departmentId           String            @db.Uuid
-  locationId             String?           @db.Uuid
-  linkedUserId           String?           @unique @db.Uuid
-  source                 AuthSource        @default(LOCAL)
-  externalId             String?           @db.VarChar(255)
-  status                 RecordStatus      @default(ACTIVE)
-  department             Department        @relation(fields: [departmentId], references: [id])
-  location               Location?         @relation(fields: [locationId], references: [id])
-  linkedUser             User?             @relation(fields: [linkedUserId], references: [id], onDelete: SetNull)
-  currentAssets          Asset[]           @relation("CurrentCustodian")
-  assignments            AssetAssignment[]
-  inventoryExpectedItems InventoryItem[]   @relation("InventoryExpectedCustodian")
-  inventoryObservedItems InventoryItem[]   @relation("InventoryObservedCustodian")
-  digitalAssignments      DigitalAssignment[]
+  id                          String                       @id @default(uuid()) @db.Uuid
+  employeeCode                String                       @unique @db.VarChar(50)
+  fullName                    String                       @db.VarChar(150)
+  email                       String?                      @unique @db.VarChar(255)
+  phone                       String?                      @db.VarChar(30)
+  jobTitle                    String?                      @db.VarChar(150)
+  departmentId                String                       @db.Uuid
+  locationId                  String?                      @db.Uuid
+  linkedUserId                String?                      @unique @db.Uuid
+  source                      AuthSource                   @default(LOCAL)
+  externalId                  String?                      @db.VarChar(255)
+  status                      RecordStatus                 @default(ACTIVE)
+  department                  Department                   @relation(fields: [departmentId], references: [id])
+  location                    Location?                    @relation(fields: [locationId], references: [id])
+  linkedUser                  User?                        @relation(fields: [linkedUserId], references: [id], onDelete: SetNull)
+  currentAssets               Asset[]                      @relation("CurrentCustodian")
+  assignments                 AssetAssignment[]
+  historyFromCustodian        AssetHistory[]               @relation("HistoryFromCustodian")
+  historyToCustodian          AssetHistory[]               @relation("HistoryToCustodian")
+  inventoryExpectedItems      InventoryItem[]              @relation("InventoryExpectedCustodian")
+  inventoryObservedItems      InventoryItem[]              @relation("InventoryObservedCustodian")
+  digitalAssignments          DigitalAssignment[]
   microsoftLicenseAssignments MicrosoftLicenseAssignment[]
-  createdAt              DateTime          @default(now())
-  updatedAt              DateTime          @updatedAt
+  createdAt                   DateTime                     @default(now())
+  updatedAt                   DateTime                     @updatedAt
 
   @@unique([source, externalId])
   @@index([departmentId, status])
@@ -799,26 +806,26 @@ model Incident {
 }
 
 model IncidentAssignment {
-  id           String                 @id @default(uuid()) @db.Uuid
-  incidentId   String                 @db.Uuid
-  assignedToId String                 @db.Uuid
-  departmentId String                 @db.Uuid
-  assignedBy   String                 @db.Uuid
-  role         IncidentAssignmentRole @default(PRIMARY)
-  note         String?
-  assignedAt   DateTime               @default(now())
-  acceptedAt   DateTime?
-  acceptedById String?                 @db.Uuid
-  releasedAt   DateTime?
-  releasedById String?                 @db.Uuid
+  id            String                 @id @default(uuid()) @db.Uuid
+  incidentId    String                 @db.Uuid
+  assignedToId  String                 @db.Uuid
+  departmentId  String                 @db.Uuid
+  assignedBy    String                 @db.Uuid
+  role          IncidentAssignmentRole @default(PRIMARY)
+  note          String?
+  assignedAt    DateTime               @default(now())
+  acceptedAt    DateTime?
+  acceptedById  String?                @db.Uuid
+  releasedAt    DateTime?
+  releasedById  String?                @db.Uuid
   releaseReason String?
-  incident     Incident               @relation(fields: [incidentId], references: [id], onDelete: Cascade)
-  assignee     User                   @relation("IncidentAssignmentAssignee", fields: [assignedToId], references: [id], onDelete: Restrict)
-  department   Department             @relation(fields: [departmentId], references: [id], onDelete: Restrict)
-  actor        User                   @relation("IncidentAssignmentActor", fields: [assignedBy], references: [id], onDelete: Restrict)
-  acceptor     User?                  @relation("IncidentAssignmentAcceptor", fields: [acceptedById], references: [id], onDelete: Restrict)
-  releaser     User?                  @relation("IncidentAssignmentReleaser", fields: [releasedById], references: [id], onDelete: Restrict)
-  createdAt    DateTime               @default(now())
+  incident      Incident               @relation(fields: [incidentId], references: [id], onDelete: Cascade)
+  assignee      User                   @relation("IncidentAssignmentAssignee", fields: [assignedToId], references: [id], onDelete: Restrict)
+  department    Department             @relation(fields: [departmentId], references: [id], onDelete: Restrict)
+  actor         User                   @relation("IncidentAssignmentActor", fields: [assignedBy], references: [id], onDelete: Restrict)
+  acceptor      User?                  @relation("IncidentAssignmentAcceptor", fields: [acceptedById], references: [id], onDelete: Restrict)
+  releaser      User?                  @relation("IncidentAssignmentReleaser", fields: [releasedById], references: [id], onDelete: Restrict)
+  createdAt     DateTime               @default(now())
 
   @@index([incidentId, assignedAt])
   @@index([assignedToId, releasedAt])
@@ -933,24 +940,32 @@ model AssetImportRow {
 }
 
 model AssetHistory {
-  id             String             @id @default(uuid()) @db.Uuid
-  assetId        String             @db.Uuid
-  action         AssetHistoryAction
-  fromUserId     String?            @db.Uuid
-  toUserId       String?            @db.Uuid
-  fromLocationId String?            @db.Uuid
-  toLocationId   String?            @db.Uuid
-  referenceType  String?
-  referenceId    String?            @db.Uuid
-  description    String
-  performedBy    String             @db.Uuid
-  asset          Asset              @relation(fields: [assetId], references: [id])
-  actor          User               @relation("HistoryActor", fields: [performedBy], references: [id])
-  fromLocation   Location?          @relation("HistoryFromLocation", fields: [fromLocationId], references: [id])
-  toLocation     Location?          @relation("HistoryToLocation", fields: [toLocationId], references: [id])
-  createdAt      DateTime           @default(now())
+  id              String             @id @default(uuid()) @db.Uuid
+  assetId         String             @db.Uuid
+  action          AssetHistoryAction
+  /// Kept for backward compatibility: only set when the custodian also has a system account.
+  fromUserId      String?            @db.Uuid
+  toUserId        String?            @db.Uuid
+  /// The person actually holding the asset, whether or not they can log in.
+  fromCustodianId String?            @db.Uuid
+  toCustodianId   String?            @db.Uuid
+  fromLocationId  String?            @db.Uuid
+  toLocationId    String?            @db.Uuid
+  referenceType   String?
+  referenceId     String?            @db.Uuid
+  description     String
+  performedBy     String             @db.Uuid
+  asset           Asset              @relation(fields: [assetId], references: [id])
+  actor           User               @relation("HistoryActor", fields: [performedBy], references: [id])
+  fromCustodian   Person?            @relation("HistoryFromCustodian", fields: [fromCustodianId], references: [id], onDelete: Restrict)
+  toCustodian     Person?            @relation("HistoryToCustodian", fields: [toCustodianId], references: [id], onDelete: Restrict)
+  fromLocation    Location?          @relation("HistoryFromLocation", fields: [fromLocationId], references: [id])
+  toLocation      Location?          @relation("HistoryToLocation", fields: [toLocationId], references: [id])
+  createdAt       DateTime           @default(now())
 
   @@index([assetId, createdAt])
+  @@index([fromCustodianId])
+  @@index([toCustodianId])
   @@map("asset_history")
 }
 
@@ -998,86 +1013,86 @@ model ApplicationSetting {
 }
 
 model Vendor {
-  id             String    @id @default(uuid()) @db.Uuid
-  code           String    @unique @db.VarChar(50)
-  name           String    @db.VarChar(200)
-  taxCode        String?   @db.VarChar(50)
-  category       String    @db.VarChar(150)
-  contact        String    @db.VarChar(150)
-  email          String?   @db.VarChar(255)
-  phone          String?   @db.VarChar(30)
-  address        String?
-  certifications String?
-  status         String    @db.VarChar(30)
-  lastEvaluation DateTime? @db.Date
-  score          Int       @default(0)
-  scores         Json      @default("{}")
-  notes          String?
+  id                  String               @id @default(uuid()) @db.Uuid
+  code                String               @unique @db.VarChar(50)
+  name                String               @db.VarChar(200)
+  taxCode             String?              @db.VarChar(50)
+  category            String               @db.VarChar(150)
+  contact             String               @db.VarChar(150)
+  email               String?              @db.VarChar(255)
+  phone               String?              @db.VarChar(30)
+  address             String?
+  certifications      String?
+  status              String               @db.VarChar(30)
+  lastEvaluation      DateTime?            @db.Date
+  score               Int                  @default(0)
+  scores              Json                 @default("{}")
+  notes               String?
   digitalEntitlements DigitalEntitlement[]
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
 
   @@map("vendors")
 }
 
 model DigitalEntitlement {
-  id                    String                   @id @default(uuid()) @db.Uuid
-  code                  String                   @unique @db.VarChar(60)
-  name                  String                   @db.VarChar(250)
-  type                  DigitalEntitlementType
-  status                DigitalEntitlementStatus @default(ACTIVE)
-  productName           String?                  @db.VarChar(200)
-  edition               String?                  @db.VarChar(120)
-  subscriptionIdentifier String?                 @db.VarChar(255)
-  domainName            String?                  @db.VarChar(253)
-  commonName            String?                  @db.VarChar(253)
-  registrar             String?                  @db.VarChar(200)
-  issuer                String?                  @db.VarChar(200)
-  licenseMetric         String?                  @db.VarChar(80)
-  totalQuantity         Int                      @default(1)
-  startDate             DateTime?                @db.Date
-  expiryDate            DateTime?                @db.Date
-  autoRenew             Boolean                  @default(false)
-  renewalPeriodMonths   Int                      @default(12)
-  cancellationDeadline  DateTime?                @db.Date
-  purchaseCost          Decimal?                 @db.Decimal(18, 2)
-  renewalCost           Decimal?                 @db.Decimal(18, 2)
-  currency              String                   @default("VND") @db.VarChar(3)
-  purchaseOrderNo       String?                  @db.VarChar(100)
-  contractNo            String?                  @db.VarChar(100)
-  managementUrl         String?                  @db.VarChar(1000)
-  accountName           String?                  @db.VarChar(255)
-  secretReference       String?                  @db.VarChar(500)
-  technicalContact      String?                  @db.VarChar(255)
-  businessOwner         String?                  @db.VarChar(255)
-  notes                 String?
-  vendorId              String?                  @db.Uuid
-  ownerDepartmentId     String?                  @db.Uuid
-  ownerUserId           String?                  @db.Uuid
-  createdBy             String                   @db.Uuid
-  externalProvider      String?                  @db.VarChar(40)
-  externalTenantId      String?                  @db.VarChar(100)
-  externalSkuId         String?                  @db.VarChar(100)
-  externalSkuPartNumber String?                  @db.VarChar(150)
-  externalAssignedQuantity Int?
+  id                        String                       @id @default(uuid()) @db.Uuid
+  code                      String                       @unique @db.VarChar(60)
+  name                      String                       @db.VarChar(250)
+  type                      DigitalEntitlementType
+  status                    DigitalEntitlementStatus     @default(ACTIVE)
+  productName               String?                      @db.VarChar(200)
+  edition                   String?                      @db.VarChar(120)
+  subscriptionIdentifier    String?                      @db.VarChar(255)
+  domainName                String?                      @db.VarChar(253)
+  commonName                String?                      @db.VarChar(253)
+  registrar                 String?                      @db.VarChar(200)
+  issuer                    String?                      @db.VarChar(200)
+  licenseMetric             String?                      @db.VarChar(80)
+  totalQuantity             Int                          @default(1)
+  startDate                 DateTime?                    @db.Date
+  expiryDate                DateTime?                    @db.Date
+  autoRenew                 Boolean                      @default(false)
+  renewalPeriodMonths       Int                          @default(12)
+  cancellationDeadline      DateTime?                    @db.Date
+  purchaseCost              Decimal?                     @db.Decimal(18, 2)
+  renewalCost               Decimal?                     @db.Decimal(18, 2)
+  currency                  String                       @default("VND") @db.VarChar(3)
+  purchaseOrderNo           String?                      @db.VarChar(100)
+  contractNo                String?                      @db.VarChar(100)
+  managementUrl             String?                      @db.VarChar(1000)
+  accountName               String?                      @db.VarChar(255)
+  secretReference           String?                      @db.VarChar(500)
+  technicalContact          String?                      @db.VarChar(255)
+  businessOwner             String?                      @db.VarChar(255)
+  notes                     String?
+  vendorId                  String?                      @db.Uuid
+  ownerDepartmentId         String?                      @db.Uuid
+  ownerUserId               String?                      @db.Uuid
+  createdBy                 String                       @db.Uuid
+  externalProvider          String?                      @db.VarChar(40)
+  externalTenantId          String?                      @db.VarChar(100)
+  externalSkuId             String?                      @db.VarChar(100)
+  externalSkuPartNumber     String?                      @db.VarChar(150)
+  externalAssignedQuantity  Int?
   externalAvailableQuantity Int?
-  externalCapabilityStatus String?               @db.VarChar(40)
-  externalLastSyncedAt  DateTime?
-  vendor                Vendor?                  @relation(fields: [vendorId], references: [id], onDelete: Restrict)
-  ownerDepartment       Department?              @relation(fields: [ownerDepartmentId], references: [id], onDelete: Restrict)
-  owner                 User?                    @relation("DigitalEntitlementOwner", fields: [ownerUserId], references: [id], onDelete: Restrict)
-  creator               User                     @relation("DigitalEntitlementCreator", fields: [createdBy], references: [id], onDelete: Restrict)
-  assignments           DigitalAssignment[]
-  renewals              DigitalRenewal[]
-  alerts                RenewalAlert[]
-  microsoftAssignments  MicrosoftLicenseAssignment[]
-  createdAt             DateTime                 @default(now())
-  updatedAt             DateTime                 @updatedAt
+  externalCapabilityStatus  String?                      @db.VarChar(40)
+  externalLastSyncedAt      DateTime?
+  vendor                    Vendor?                      @relation(fields: [vendorId], references: [id], onDelete: Restrict)
+  ownerDepartment           Department?                  @relation(fields: [ownerDepartmentId], references: [id], onDelete: Restrict)
+  owner                     User?                        @relation("DigitalEntitlementOwner", fields: [ownerUserId], references: [id], onDelete: Restrict)
+  creator                   User                         @relation("DigitalEntitlementCreator", fields: [createdBy], references: [id], onDelete: Restrict)
+  assignments               DigitalAssignment[]
+  renewals                  DigitalRenewal[]
+  alerts                    RenewalAlert[]
+  microsoftAssignments      MicrosoftLicenseAssignment[]
+  createdAt                 DateTime                     @default(now())
+  updatedAt                 DateTime                     @updatedAt
 
+  @@unique([externalProvider, externalTenantId, externalSkuId])
   @@index([type, status, expiryDate])
   @@index([ownerDepartmentId, expiryDate])
   @@index([vendorId])
-  @@unique([externalProvider, externalTenantId, externalSkuId])
   @@map("digital_entitlements")
 }
 
@@ -1092,10 +1107,10 @@ model MicrosoftLicenseAssignment {
   assignmentError   String?            @db.VarChar(100)
   personId          String?            @db.Uuid
   entitlement       DigitalEntitlement @relation(fields: [entitlementId], references: [id], onDelete: Cascade)
-  person             Person?           @relation(fields: [personId], references: [id], onDelete: SetNull)
-  lastSyncedAt       DateTime           @default(now())
-  createdAt          DateTime           @default(now())
-  updatedAt          DateTime           @updatedAt
+  person            Person?            @relation(fields: [personId], references: [id], onDelete: SetNull)
+  lastSyncedAt      DateTime           @default(now())
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
 
   @@unique([entitlementId, externalUserId])
   @@index([userPrincipalName])
@@ -1137,15 +1152,15 @@ model DigitalRenewal {
   id                 String               @id @default(uuid()) @db.Uuid
   entitlementId      String               @db.Uuid
   status             DigitalRenewalStatus @default(COMPLETED)
-  previousExpiryDate DateTime              @db.Date
-  newExpiryDate      DateTime              @db.Date
-  renewalDate        DateTime              @default(now()) @db.Date
-  amount             Decimal?              @db.Decimal(18, 2)
-  currency           String                @default("VND") @db.VarChar(3)
-  purchaseOrderNo    String?               @db.VarChar(100)
-  invoiceNo          String?               @db.VarChar(100)
-  approvedBy         String?               @db.Uuid
-  renewedBy          String                @db.Uuid
+  previousExpiryDate DateTime             @db.Date
+  newExpiryDate      DateTime             @db.Date
+  renewalDate        DateTime             @default(now()) @db.Date
+  amount             Decimal?             @db.Decimal(18, 2)
+  currency           String               @default("VND") @db.VarChar(3)
+  purchaseOrderNo    String?              @db.VarChar(100)
+  invoiceNo          String?              @db.VarChar(100)
+  approvedBy         String?              @db.Uuid
+  renewedBy          String               @db.Uuid
   notes              String?
   entitlement        DigitalEntitlement   @relation(fields: [entitlementId], references: [id], onDelete: Restrict)
   approver           User?                @relation("DigitalRenewalApprover", fields: [approvedBy], references: [id], onDelete: Restrict)
@@ -1174,24 +1189,24 @@ model RenewalAlertPolicy {
 }
 
 model RenewalAlert {
-  id               String             @id @default(uuid()) @db.Uuid
-  entitlementId    String             @db.Uuid
-  policyId          String             @db.Uuid
-  thresholdDays     Int
-  dueDate           DateTime           @db.Date
-  status            RenewalAlertStatus @default(OPEN)
-  firstTriggeredAt  DateTime           @default(now())
-  lastTriggeredAt   DateTime           @default(now())
-  acknowledgedAt    DateTime?
-  acknowledgedBy    String?            @db.Uuid
-  resolvedAt        DateTime?
-  note              String?
-  entitlement       DigitalEntitlement @relation(fields: [entitlementId], references: [id], onDelete: Cascade)
-  policy            RenewalAlertPolicy @relation(fields: [policyId], references: [id], onDelete: Restrict)
-  acknowledger      User?              @relation("RenewalAlertAcknowledger", fields: [acknowledgedBy], references: [id], onDelete: Restrict)
-  deliveries        RenewalNotificationDelivery[]
-  createdAt         DateTime           @default(now())
-  updatedAt         DateTime           @updatedAt
+  id               String                        @id @default(uuid()) @db.Uuid
+  entitlementId    String                        @db.Uuid
+  policyId         String                        @db.Uuid
+  thresholdDays    Int
+  dueDate          DateTime                      @db.Date
+  status           RenewalAlertStatus            @default(OPEN)
+  firstTriggeredAt DateTime                      @default(now())
+  lastTriggeredAt  DateTime                      @default(now())
+  acknowledgedAt   DateTime?
+  acknowledgedBy   String?                       @db.Uuid
+  resolvedAt       DateTime?
+  note             String?
+  entitlement      DigitalEntitlement            @relation(fields: [entitlementId], references: [id], onDelete: Cascade)
+  policy           RenewalAlertPolicy            @relation(fields: [policyId], references: [id], onDelete: Restrict)
+  acknowledger     User?                         @relation("RenewalAlertAcknowledger", fields: [acknowledgedBy], references: [id], onDelete: Restrict)
+  deliveries       RenewalNotificationDelivery[]
+  createdAt        DateTime                      @default(now())
+  updatedAt        DateTime                      @updatedAt
 
   @@unique([entitlementId, dueDate, thresholdDays])
   @@index([status, dueDate])
@@ -1199,21 +1214,21 @@ model RenewalAlert {
 }
 
 model RenewalNotificationConfiguration {
-  id                 String   @id @default(uuid()) @db.Uuid
-  enabled            Boolean  @default(false)
-  smtpHost           String?  @db.VarChar(255)
-  smtpPort           Int      @default(587)
-  secure             Boolean  @default(false)
-  username           String?  @db.VarChar(255)
-  passwordEncrypted  String?
-  fromName           String?  @db.VarChar(150)
-  fromAddress        String?  @db.VarChar(255)
-  replyTo            String?  @db.VarChar(255)
-  lastTestAt         DateTime?
-  lastTestOk         Boolean?
-  lastTestMessage    String?
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
+  id                String    @id @default(uuid()) @db.Uuid
+  enabled           Boolean   @default(false)
+  smtpHost          String?   @db.VarChar(255)
+  smtpPort          Int       @default(587)
+  secure            Boolean   @default(false)
+  username          String?   @db.VarChar(255)
+  passwordEncrypted String?
+  fromName          String?   @db.VarChar(150)
+  fromAddress       String?   @db.VarChar(255)
+  replyTo           String?   @db.VarChar(255)
+  lastTestAt        DateTime?
+  lastTestOk        Boolean?
+  lastTestMessage   String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
 
   @@map("renewal_notification_configurations")
 }

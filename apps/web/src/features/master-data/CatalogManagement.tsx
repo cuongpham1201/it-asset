@@ -29,6 +29,11 @@ export function CatalogManagement() {
   const [manufacturerForm, setManufacturerForm] = useState({ name: '', website: '' })
   const [modelForm, setModelForm] = useState({ name: '', manufacturerId: '', categoryId: '', modelNumber: '' })
   const [categoryForm, setCategoryForm] = useState({ code: '', name: '', description: '' })
+  const [editing, setEditing] = useState<{ id: string; field: Record<string, string> } | undefined>()
+
+  const startEdit = (id: string, field: Record<string, string>) => setEditing({ id, field })
+  const editValue = (key: string, value: string) => setEditing(current => (current ? { ...current, field: { ...current.field, [key]: value } } : current))
+  const cancelEdit = () => setEditing(undefined)
 
   const reload = () => setToken(value => value + 1)
 
@@ -109,15 +114,25 @@ export function CatalogManagement() {
             <tbody>
               {(manufacturers.data ?? []).map((row: Manufacturer) => (
                 <tr key={row.id}>
-                  <td><b className="cell-main">{row.name}</b>{row.website && <small className="cell-sub">{row.website}</small>}</td>
+                  <td>
+                    {editing?.id === row.id
+                      ? <input className="inline-edit" value={editing.field.name} onChange={event => editValue('name', event.target.value)} aria-label={`Tên hãng ${row.name}`}/>
+                      : <><b className="cell-main">{row.name}</b>{row.website && <small className="cell-sub">{row.website}</small>}</>}
+                  </td>
                   <td>{row._count?.models ?? 0}</td>
                   <td>{row._count?.assets ?? 0}</td>
                   <td><span className={`status ${row.status === 'ACTIVE' ? 'blue' : 'red'}`}><i/>{statusLabel(row.status)}</span></td>
-                  <td>
-                    <button className="btn link" disabled={busy}
-                      onClick={() => void act('Đã cập nhật hãng sản xuất.', () => updateManufacturer(row.id, { status: toggleStatus(row.status) }))}>
-                      {row.status === 'ACTIVE' ? 'Ngừng dùng' : 'Dùng lại'}
-                    </button>
+                  <td className="row-actions-cell">
+                    {editing?.id === row.id ? <>
+                      <button className="btn link" disabled={busy} onClick={() => void act('Đã cập nhật hãng sản xuất.', async () => { await updateManufacturer(row.id, { name: editing.field.name.trim() }); cancelEdit() })}>Lưu</button>
+                      <button className="btn link" onClick={cancelEdit}>Huỷ</button>
+                    </> : <>
+                      <button className="btn link" disabled={busy} onClick={() => startEdit(row.id, { name: row.name })}>Sửa</button>
+                      <button className="btn link" disabled={busy}
+                        onClick={() => void act(row.status === 'ACTIVE' ? 'Đã ngừng hãng sản xuất.' : 'Đã dùng lại hãng sản xuất.', () => updateManufacturer(row.id, { status: toggleStatus(row.status) }))}>
+                        {row.status === 'ACTIVE' ? 'Ngừng dùng' : 'Dùng lại'}
+                      </button>
+                    </>}
                   </td>
                 </tr>
               ))}
@@ -171,16 +186,27 @@ export function CatalogManagement() {
             <tbody>
               {(models.data ?? []).map((row: AssetModel) => (
                 <tr key={row.id}>
-                  <td><b className="cell-main">{row.name}</b>{row.modelNumber && <small className="cell-sub">{row.modelNumber}</small>}</td>
+                  <td>
+                    {editing?.id === row.id
+                      ? <><input className="inline-edit" value={editing.field.name} onChange={event => editValue('name', event.target.value)} aria-label={`Tên model ${row.name}`}/>
+                          <input className="inline-edit" value={editing.field.modelNumber} onChange={event => editValue('modelNumber', event.target.value)} aria-label="Mã model" placeholder="Mã model"/></>
+                      : <><b className="cell-main">{row.name}</b>{row.modelNumber && <small className="cell-sub">{row.modelNumber}</small>}</>}
+                  </td>
                   <td>{row.manufacturer?.name ?? '—'}</td>
                   <td>{row.category?.name ?? '—'}</td>
                   <td>{row._count?.assets ?? 0}</td>
                   <td><span className={`status ${row.status === 'ACTIVE' ? 'blue' : 'red'}`}><i/>{statusLabel(row.status)}</span></td>
-                  <td>
-                    <button className="btn link" disabled={busy}
-                      onClick={() => void act('Đã cập nhật model.', () => updateModel(row.id, { status: toggleStatus(row.status) }))}>
-                      {row.status === 'ACTIVE' ? 'Ngừng dùng' : 'Dùng lại'}
-                    </button>
+                  <td className="row-actions-cell">
+                    {editing?.id === row.id ? <>
+                      <button className="btn link" disabled={busy} onClick={() => void act('Đã cập nhật model.', async () => { await updateModel(row.id, { name: editing.field.name.trim(), modelNumber: editing.field.modelNumber.trim() }); cancelEdit() })}>Lưu</button>
+                      <button className="btn link" onClick={cancelEdit}>Huỷ</button>
+                    </> : <>
+                      <button className="btn link" disabled={busy} onClick={() => startEdit(row.id, { name: row.name, modelNumber: row.modelNumber ?? '' })}>Sửa</button>
+                      <button className="btn link" disabled={busy}
+                        onClick={() => void act(row.status === 'ACTIVE' ? 'Đã ngừng model.' : 'Đã dùng lại model.', () => updateModel(row.id, { status: toggleStatus(row.status) }))}>
+                        {row.status === 'ACTIVE' ? 'Ngừng dùng' : 'Dùng lại'}
+                      </button>
+                    </>}
                   </td>
                 </tr>
               ))}
@@ -219,15 +245,25 @@ export function CatalogManagement() {
               {(categories.data ?? []).map((row: AssetCategory) => (
                 <tr key={row.id}>
                   <td><b className="table-code">{row.code}</b></td>
-                  <td><b className="cell-main">{row.name}</b>{row.description && <small className="cell-sub">{row.description}</small>}</td>
+                  <td>
+                    {editing?.id === row.id
+                      ? <input className="inline-edit" value={editing.field.name} onChange={event => editValue('name', event.target.value)} aria-label={`Tên nhóm ${row.name}`}/>
+                      : <><b className="cell-main">{row.name}</b>{row.description && <small className="cell-sub">{row.description}</small>}</>}
+                  </td>
                   <td>{row._count?.assets ?? 0}</td>
                   <td>{row._count?.models ?? 0}</td>
                   <td><span className={`status ${row.status === 'ACTIVE' ? 'blue' : 'red'}`}><i/>{statusLabel(row.status)}</span></td>
-                  <td>
-                    <button className="btn link" disabled={busy}
-                      onClick={() => void act('Đã cập nhật nhóm tài sản.', () => updateCategory(row.id, { status: toggleStatus(row.status) }))}>
-                      {row.status === 'ACTIVE' ? 'Ngừng dùng' : 'Dùng lại'}
-                    </button>
+                  <td className="row-actions-cell">
+                    {editing?.id === row.id ? <>
+                      <button className="btn link" disabled={busy} onClick={() => void act('Đã cập nhật nhóm tài sản.', async () => { await updateCategory(row.id, { name: editing.field.name.trim() }); cancelEdit() })}>Lưu</button>
+                      <button className="btn link" onClick={cancelEdit}>Huỷ</button>
+                    </> : <>
+                      <button className="btn link" disabled={busy} onClick={() => startEdit(row.id, { name: row.name })}>Sửa</button>
+                      <button className="btn link" disabled={busy}
+                        onClick={() => void act(row.status === 'ACTIVE' ? 'Đã ngừng nhóm tài sản.' : 'Đã dùng lại nhóm tài sản.', () => updateCategory(row.id, { status: toggleStatus(row.status) }))}>
+                        {row.status === 'ACTIVE' ? 'Ngừng dùng' : 'Dùng lại'}
+                      </button>
+                    </>}
                   </td>
                 </tr>
               ))}
