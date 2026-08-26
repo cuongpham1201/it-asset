@@ -25,6 +25,8 @@ export class AuditService {
   private where(query: ListAuditLogsQuery): Prisma.AuditLogWhereInput {
     const term = query.search?.trim()
     const text = term ? { contains: term, mode: 'insensitive' as const } : undefined
+    // entityId is a uuid column, so it can only be matched exactly — never with ILIKE.
+    const termIsUuid = term ? /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(term) : false
     const createdAt = query.from || query.to
       ? { ...(query.from ? { gte: new Date(query.from) } : {}), ...(query.to ? { lte: endOfRange(query.to) } : {}) }
       : undefined
@@ -34,7 +36,7 @@ export class AuditService {
       entityId: query.entityId,
       userId: query.userId,
       createdAt,
-      ...(text ? { OR: [{ action: text }, { entityType: text }, { entityId: text }] } : {}),
+      ...(text ? { OR: [{ action: text }, { entityType: text }, ...(termIsUuid ? [{ entityId: term }] : [])] } : {}),
     }
   }
 

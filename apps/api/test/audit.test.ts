@@ -79,13 +79,23 @@ test('a bare end date covers the whole day', async () => {
   assert.equal(range.lte.toISOString(), '2026-08-26T23:59:59.999Z')
 })
 
-test('search covers action, entity type and entity id', async () => {
+test('free-text search covers the text columns only', async () => {
   const { db, captured } = auditDb()
   await new AuditService(db as any).list({ page: 1, limit: 25, search: ' asset ' } as any, admin as any)
   const or = captured().where.OR
-  assert.deepEqual(or.map((clause: any) => Object.keys(clause)[0]), ['action', 'entityType', 'entityId'])
+  // entityId is a uuid column; matching it with ILIKE makes Postgres reject the whole query.
+  assert.deepEqual(or.map((clause: any) => Object.keys(clause)[0]), ['action', 'entityType'])
   assert.equal(or[0].action.contains, 'asset')
   assert.equal(or[0].action.mode, 'insensitive')
+})
+
+test('searching for a uuid matches the entity id exactly', async () => {
+  const { db, captured } = auditDb()
+  const id = '680cd519-e4ed-4201-9f50-0729c0ed9e40'
+  await new AuditService(db as any).list({ page: 1, limit: 25, search: id } as any, admin as any)
+  const or = captured().where.OR
+  assert.deepEqual(or.map((clause: any) => Object.keys(clause)[0]), ['action', 'entityType', 'entityId'])
+  assert.equal(or[2].entityId, id)
 })
 
 // ── serialisation ────────────────────────────────────────────────────────────
