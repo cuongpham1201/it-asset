@@ -3,15 +3,9 @@ import { Prisma } from '@prisma/client'
 import { PrismaService } from '../../database/prisma.service'
 import { ListAuditLogsQuery } from './audit.dto'
 import { redactAuditValues } from './audit.redaction'
+import { businessDateRange } from './audit.time'
 
 type Actor = { id: string; role: string }
-
-/** A bare date means the whole day, so the upper bound has to reach its final millisecond. */
-function endOfRange(value: string) {
-  const date = new Date(value)
-  if (/^\d{4}-\d{2}-\d{2}$/.test(value.trim())) date.setUTCHours(23, 59, 59, 999)
-  return date
-}
 
 @Injectable()
 export class AuditService {
@@ -27,9 +21,7 @@ export class AuditService {
     const text = term ? { contains: term, mode: 'insensitive' as const } : undefined
     // entityId is a uuid column, so it can only be matched exactly — never with ILIKE.
     const termIsUuid = term ? /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(term) : false
-    const createdAt = query.from || query.to
-      ? { ...(query.from ? { gte: new Date(query.from) } : {}), ...(query.to ? { lte: endOfRange(query.to) } : {}) }
-      : undefined
+    const createdAt = businessDateRange(query.from, query.to)
     return {
       action: query.action,
       entityType: query.entityType,

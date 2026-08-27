@@ -71,12 +71,13 @@ test('every documented filter reaches the query', async () => {
   assert.equal(where.userId, 'actor-1')
 })
 
-test('a bare end date covers the whole day', async () => {
+test('a bare date range is read as Vietnamese business days, half-open', async () => {
   const { db, captured } = auditDb()
   await new AuditService(db as any).list({ page: 1, limit: 25, from: '2026-08-01', to: '2026-08-26' } as any, admin as any)
   const range = captured().where.createdAt
-  assert.equal(range.gte.toISOString().startsWith('2026-08-01'), true)
-  assert.equal(range.lte.toISOString(), '2026-08-26T23:59:59.999Z')
+  assert.equal(range.gte.toISOString(), '2026-07-31T17:00:00.000Z')
+  assert.equal(range.lt.toISOString(), '2026-08-26T17:00:00.000Z')
+  assert.equal(range.lte, undefined)
 })
 
 test('free-text search covers the text columns only', async () => {
