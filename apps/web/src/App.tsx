@@ -192,6 +192,20 @@ const seedSuppliers:Supplier[]=[
   {id:3,code:'NCC-003',name:'CloudOne Services',taxCode:'0108877665',category:'Cloud & phần mềm',contact:'Lê Anh Tuấn',email:'account@cloudone-example.vn',phone:'024 3999 1100',address:'Hà Nội',certifications:'ISO/IEC 27001, ISO/IEC 27017',status:'Đã phê duyệt',lastEvaluation:'2026-08-02',score:88,scores:{quality:88,delivery:92,security:94,compliance:86,continuity:88,sustainability:68},notes:'Đánh giá lại hằng năm'},
 ]
 
+function AccessDeniedScreen({ user, branding, onLogout }: { user: AppUser; branding: BrandingSettings; onLogout: () => void }) {
+  // AssetFlow is IT-operated: ADMIN is the only supported operational role (P1C).
+  // A legacy account can still sign in, but the application itself stays closed.
+  const logo=branding.logoDataUrl?<img src={branding.logoDataUrl} alt="Logo"/>:<Box size={24}/>
+  return <div className="login-page login-centered"><section className="login-card login-centered-card access-denied-card">
+    <div className="login-company"><div className="brand-mark">{logo}</div><div><b>{branding.appName}</b><strong>{branding.companyName}</strong></div></div>
+    <div className="login-card-heading"><h2>Không có quyền truy cập</h2>
+      <p>AssetFlow là hệ thống quản lý tài sản dành riêng cho quản trị viên IT. Tài khoản <b>{user.username}</b> ({user.role}) không có quyền vận hành hệ thống.</p>
+      <p>Nếu bạn cần tra cứu hoặc bàn giao tài sản, vui lòng liên hệ bộ phận IT.</p></div>
+    <button className="login-submit" onClick={onLogout}><LogOut size={17}/> Đăng xuất</button>
+    <footer>© {new Date().getFullYear()} {branding.companyName}</footer>
+  </section></div>
+}
+
 function LoginScreen({ onLogin, branding, sessionExpired }: { onLogin: (username: string, password: string) => Promise<boolean>; branding: BrandingSettings; sessionExpired?: boolean }) {
   const [username,setUsername]=useState(''),[password,setPassword]=useState(''),[show,setShow]=useState(false),[error,setError]=useState('')
   const [submitting,setSubmitting]=useState(false)
@@ -215,13 +229,12 @@ function ChangePasswordModal({onClose,onChange}:{onClose:()=>void;onChange:(curr
 }
 
 function Sidebar({ page, setPage, open, close, user, logout, openChangePassword, branding, language }: { page: string; setPage: (p: string) => void; open: boolean; close: () => void; user: AppUser; logout: () => void; openChangePassword:()=>void; branding: BrandingSettings; language:string }) {
-  const hcnsAllowed=['Tổng quan','Sổ tài sản','Cấp phát & Thu hồi','Lịch sử / Audit','Barcode / QR']
   const initials=user.name.split(' ').slice(-2).map(x=>x[0]).join('')
   return <>
     {open && <div className="overlay" onClick={close} />}
     <aside className={`sidebar ${open ? 'open' : ''}`}>
       <div className="brand"><div className="brand-mark">{branding.logoDataUrl?<img src={branding.logoDataUrl} alt="Logo"/>:<Box size={23} strokeWidth={2.3}/>}</div><div className="brand-copy"><b>{branding.appName}</b><small>{language==='en-US'?'ASSET MANAGEMENT SYSTEM':'HỆ THỐNG QUẢN LÝ TÀI SẢN'}</small></div></div>
-      <nav>{navSections.map(section=>{const itOnly=['Khám phá & Agent','License & Gia hạn','Bảo trì & Sự cố'],adminOnly=['Danh mục tài sản','Nhật ký hệ thống'];const permitted=section.items.filter(item=>(!itOnly.includes(item.label)||['Admin','IT'].includes(user.role))&&(!adminOnly.includes(item.label)||user.role==='Admin'));const items=user.role==='HCNS'?permitted.filter(item=>hcnsAllowed.includes(item.label)):permitted;return items.length?<div className="nav-section" key={section.title}><p className="nav-title">{uiLabel(section.title,language)}</p>{items.map(item=><button key={item.label} className={page===item.label?'active':''} onClick={()=>{setPage(item.label);close()}}><item.icon size={17}/><span>{uiLabel(item.label,language)}</span>{item.count&&<em>{item.count}</em>}</button>)}</div>:null})}</nav>
+      <nav>{navSections.map(section=>{const itOnly=['Khám phá & Agent','License & Gia hạn','Bảo trì & Sự cố'],adminOnly=['Danh mục tài sản','Nhật ký hệ thống'];const permitted=section.items.filter(item=>(!itOnly.includes(item.label)||['Admin','IT'].includes(user.role))&&(!adminOnly.includes(item.label)||user.role==='Admin'));const items=permitted;return items.length?<div className="nav-section" key={section.title}><p className="nav-title">{uiLabel(section.title,language)}</p>{items.map(item=><button key={item.label} className={page===item.label?'active':''} onClick={()=>{setPage(item.label);close()}}><item.icon size={17}/><span>{uiLabel(item.label,language)}</span>{item.count&&<em>{item.count}</em>}</button>)}</div>:null})}</nav>
       <div className="sidebar-bottom">
         {user.role==='Admin'&&<button className={['Cấu hình hệ thống','Tùy chỉnh thương hiệu','Cấu hình email'].includes(page) ? 'active' : ''} onClick={() => { setPage('Cấu hình hệ thống'); close() }}><Settings size={19} /><span>{uiLabel('Cài đặt',language)}</span></button>}
         <button><HelpCircle size={19} /><span>{uiLabel('Trợ giúp',language)}</span></button>
@@ -738,7 +751,7 @@ export default function App() {
     setTransactions(historyResult.data.filter(item=>actionType[item.action]).map(item=>({id:numericId(item.id),assetId:numericId(item.asset.id),assetCode:item.asset.assetTag,assetName:item.asset.name,type:item.action==='ASSIGNED'&&String(item.description).toLocaleLowerCase('vi').includes('mượn')?'Cho mượn':actionType[item.action],from:item.fromLocation?.name||'Hệ thống',to:item.toLocation?.name||item.asset.location?.name||'Hệ thống',date:item.createdAt,performedBy:item.actor?.fullName||'Hệ thống',note:item.description||''})))
   }
   useEffect(()=>{
-    if(env.demoMode||!currentUser||currentUser.mustChangePassword)return
+    if(env.demoMode||!currentUser||currentUser.mustChangePassword||currentUser.role!=='Admin')return
     const controller=new AbortController()
     setShellLoading(true);setShellError(undefined)
     refreshServerData(controller.signal)
@@ -845,9 +858,11 @@ export default function App() {
     return ()=>setUnauthorizedHandler(undefined)
   },[])
 
+  /** ADMIN is the only role allowed to operate the app; everyone else sees the denial screen. */
+  const isAdminOperator=currentUser?.role==='Admin'
   const serverMode=!env.demoMode
   const summaryQuery=useServerQuery<AssetSummary|undefined>(
-    signal=>(serverMode&&currentUser&&!currentUser.mustChangePassword?getAssetSummary(signal):Promise.resolve(undefined)),
+    signal=>(serverMode&&isAdminOperator&&!currentUser?.mustChangePassword?getAssetSummary(signal):Promise.resolve(undefined)),
     [serverMode,currentUser?.username,currentUser?.mustChangePassword,dataToken],
   )
   const dashboardQuery=useMemo<AssetQuery>(()=>({
@@ -855,7 +870,7 @@ export default function App() {
     ...(dashboardCategory.id?{category:dashboardCategory.id}:{}),
   }),[dashboardView,dashboardCategory.id])
   const dashboardAssets=useServerQuery(
-    signal=>(serverMode&&currentUser&&!currentUser.mustChangePassword?listAssets(dashboardQuery,signal):Promise.resolve(undefined)),
+    signal=>(serverMode&&isAdminOperator&&!currentUser?.mustChangePassword?listAssets(dashboardQuery,signal):Promise.resolve(undefined)),
     [serverMode,currentUser?.username,currentUser?.mustChangePassword,JSON.stringify(dashboardQuery),dataToken],
   )
   const assetOptions=useMemo<AssetBookOption[]>(()=>referenceData.categories.map(item=>({id:item.id,code:item.code,name:item.name})),[referenceData.categories])
@@ -874,6 +889,7 @@ export default function App() {
   if(!authReady)return <div className="auth-loading" aria-live="polite">Đang kiểm tra phiên đăng nhập…</div>
   if(!currentUser)return <LoginScreen onLogin={login} branding={branding} sessionExpired={sessionExpired}/>
   if(currentUser.mustChangePassword)return <ChangePasswordScreen user={currentUser} branding={branding} onChange={changeInitialPassword}/>
+  if(currentUser.role!=='Admin')return <AccessDeniedScreen user={currentUser} branding={branding} onLogout={logout}/>
   const isAdmin=currentUser.role==='Admin'
   const openScanner=(mode:'lookup'|'intake'='lookup')=>setPage(mode==='intake'?'Nhập kho':'Barcode / QR')
   const operations=<OperationsBoard summary={summaryQuery.data} categories={assetOptions} departments={departmentPickerOptions} locations={locationPickerOptions} statuses={statusPickerOptions} people={peoplePickerOptions} transactions={scopedTransactions} refreshToken={dataToken} onAssign={setAssignmentAsset} onBarcode={setBarcodeAsset} onView={a=>setDetailAsset(a)} openHistory={()=>setPage('Lịch sử / Audit')} openScanner={openScanner}/>

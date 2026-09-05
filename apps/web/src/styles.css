@@ -13635,3 +13635,7 @@ textarea,
   .audit-values dl>div{grid-template-columns:1fr;gap:2px}
   .audit-filters .date-filter{flex:1 1 100%}
 }
+
+/* ── P1C: admin-only access denial ─────────────────────────────────────────── */
+.access-denied-card .login-card-heading p{margin:0 0 10px;color:#4a5764;font-size:14px;line-height:1.6}
+.access-denied-card .login-submit{display:flex;align-items:center;justify-content:center;gap:8px}

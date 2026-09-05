@@ -2,6 +2,13 @@
 
 Các thay đổi đáng chú ý của AssetFlow được ghi tại đây theo Semantic Versioning.
 
+## [Unreleased]
+
+### Changed
+
+- **AssetFlow là hệ thống nội bộ do đội IT vận hành; ADMIN là vai trò vận hành duy nhất được hỗ trợ** (quyết định sản phẩm P1C). Tài khoản mang vai trò cũ (IT/HCNS/USER) vẫn đăng nhập/đổi mật khẩu/đăng xuất được nhưng bị chặn 403 tại một điểm duy nhất trong AuthGuard cho mọi endpoint nghiệp vụ; giao diện hiển thị màn "Không có quyền truy cập" thay vì ứng dụng. Không migration — enum và dữ liệu role cũ giữ nguyên để tương thích.
+- P1A (server-side data flow) và P1B (audit + custodian history) đã phát hành: xem tag `p1a-uat-pass-2026-08-26`, `p1b-uat-pass-2026-09-05` và `docs/ROADMAP-PHASES.md`.
+
 ## [2.0.1] - 2026-08-21
 
 ### Fixed

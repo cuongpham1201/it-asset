@@ -1,3 +1,7 @@
+> **DEPRECATED — 05/09/2026.** Tài liệu này mô tả mô hình sprint S01–S12 cũ và không còn
+> phản ánh kế hoạch thực tế. Nguồn chính thức hiện nay là [ROADMAP-PHASES.md](./ROADMAP-PHASES.md)
+> (mô hình phase P0 → P3, đã triển khai tới P1C). File này được giữ lại nguyên trạng để audit.
+
 # AssetFlow v1.0 Roadmap
 
 Roadmap triển khai tuần tự. Một sprint chỉ được đánh dấu hoàn thành khi Definition of Done đã được kiểm chứng.
